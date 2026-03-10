@@ -1,0 +1,10 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Meal Planner",
+        "description": "Meal Planner for Home Assistant"
+      }
+    }
+  }
+}

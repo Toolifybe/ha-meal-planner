@@ -1,0 +1,19 @@
+add_recipe:
+  name: Add Recipe
+  description: Add a new recipe to the meal planner.
+  fields:
+    name:
+      name: Name
+      description: Name of the recipe.
+      required: true
+      selector:
+        text:
+    description:
+      name: Description
+      description: Short description of the recipe.
+      selector:
+        text:
+
+get_todays_dinner:
+  name: Get Today's Dinner
+  description: Returns the planned dinner for today.

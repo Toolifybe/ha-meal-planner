@@ -1,0 +1,11 @@
+{
+  "name": "Meal Planner",
+  "description": "A simple Meal Planner",
+  "render_readme": true,
+  "domains": ["mael_planner"],
+  "documentation": "https://github.com/toolifybe/ha-meal-planner",
+  "issue_tracker": "https://github.com/toolifybe/ha-meal-planner/issues",
+  "homeassistant": "2023.1.0",
+  "filename": "meal-planner-card.js",
+  "content_in_root": false
+}
