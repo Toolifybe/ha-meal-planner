@@ -80,32 +80,34 @@ const STYLES = `
   .week-nav button { background:none; border:1px solid var(--divider-color,#ddd); border-radius:6px; padding:5px 12px; cursor:pointer; color:var(--primary-text-color); font-size:.9em; }
   .week-nav button:hover { background:var(--secondary-background-color,#f5f5f5); }
   .week-label { font-weight:600; color:var(--primary-text-color); font-size:.95em; }
-  .week-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:5px; }
-  .day-col { min-width:0; display:flex; flex-direction:column; gap:3px; }
-  .day-header { text-align:center; font-weight:700; font-size:.78em; padding:5px 2px 4px; color:var(--secondary-text-color); border-bottom:2px solid transparent; }
-  .day-header.today { color:var(--primary-color); border-bottom-color:var(--primary-color); }
-  .day-date { font-size:.62em; opacity:.6; font-weight:400; }
-  .meal-slot { background:var(--secondary-background-color,#f0f2f5); border-radius:6px; padding:5px 5px 4px; cursor:pointer; transition:all .15s; border:1px solid transparent; position:relative; min-height:44px; display:flex; flex-direction:column; }
-  .meal-slot:hover { border-color:var(--primary-color); background:var(--primary-color); }
-  .meal-slot:hover .meal-type-dot { background:rgba(255,255,255,.6); }
-  .meal-slot:hover .meal-empty { color:white; opacity:.8; }
-  .meal-slot.filled { background:var(--primary-color); color:white; border-color:transparent; }
-  .meal-slot.filled:hover { filter:brightness(1.08); }
-  .meal-type-dot { width:5px; height:5px; border-radius:50%; background:var(--secondary-text-color); opacity:.4; margin-bottom:3px; flex-shrink:0; }
-  .meal-slot.filled .meal-type-dot { background:rgba(255,255,255,.7); opacity:1; }
-  .meal-type-label { display:none; }
-  .meal-name { font-size:.7em; font-weight:600; line-height:1.25; word-break:break-word; flex:1; }
-  .meal-empty { font-size:1em; opacity:.25; text-align:center; margin:auto; line-height:1; color:var(--primary-text-color); }
-  .meal-slot .remove-meal { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.25); border:none; border-radius:50%; width:13px; height:13px; font-size:8px; cursor:pointer; display:none; align-items:center; justify-content:center; color:white; padding:0; line-height:1; }
-  .meal-slot.filled:hover .remove-meal { display:flex; }
-  .meal-row-label { font-size:.6em; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--secondary-text-color); opacity:.6; padding:4px 0 1px; grid-column:1/-1; }
+  /* ===== PLANNER ROWS ===== */
+  .week-grid { display:flex; flex-direction:column; gap:6px; }
+  .planner-row { display:flex; align-items:center; gap:0; border-radius:10px; overflow:hidden; border:1px solid var(--divider-color,#e8e8e8); transition:border-color .15s; background:var(--card-background-color,white); }
+  .planner-row.today { border-color:var(--primary-color); }
+  .planner-day-label { display:flex; flex-direction:column; justify-content:center; width:88px; min-width:88px; padding:10px 12px; background:var(--secondary-background-color,#f5f7fa); border-right:1px solid var(--divider-color,#e8e8e8); }
+  .planner-row.today .planner-day-label { background:var(--primary-color); border-right-color:var(--primary-color); }
+  .planner-day-name { font-weight:700; font-size:.88em; color:var(--primary-text-color); }
+  .planner-row.today .planner-day-name { color:white; }
+  .planner-day-date { font-size:.72em; color:var(--secondary-text-color); margin-top:2px; }
+  .planner-row.today .planner-day-date { color:rgba(255,255,255,.75); }
+  .planner-meal-slot { flex:1; display:flex; align-items:center; gap:10px; cursor:pointer; padding:8px 12px; min-height:56px; transition:background .15s; }
+  .planner-meal-slot:hover { background:var(--secondary-background-color,#f5f5f5); }
+  .planner-meal-slot.filled:hover { background:color-mix(in srgb, var(--primary-color) 8%, transparent); }
+  .planner-meal-img { width:40px; height:40px; border-radius:8px; object-fit:cover; flex-shrink:0; }
+  .planner-meal-emoji { display:flex; align-items:center; justify-content:center; font-size:1.4em; background:var(--secondary-background-color,#eee); border-radius:8px; }
+  .planner-meal-info { flex:1; min-width:0; }
+  .planner-meal-name { font-weight:700; font-size:.92em; color:var(--primary-text-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .planner-meal-meta { font-size:.75em; color:var(--secondary-text-color); margin-top:3px; display:flex; align-items:center; gap:5px; }
+  .servings-inline { width:34px; padding:2px 4px; border:1px solid var(--divider-color,#ddd); border-radius:4px; font-size:.9em; background:var(--input-fill-color,#f5f5f5); color:var(--primary-text-color); text-align:center; }
+  .planner-meal-empty { flex:1; font-size:.85em; color:var(--secondary-text-color); opacity:.5; }
+  .planner-remove-btn { background:none; border:none; border-radius:50%; width:24px; height:24px; font-size:14px; cursor:pointer; color:var(--secondary-text-color); display:flex; align-items:center; justify-content:center; flex-shrink:0; opacity:0; transition:opacity .15s; padding:0; line-height:1; }
+  .planner-meal-slot:hover .planner-remove-btn { opacity:.5; }
+  .planner-remove-btn:hover { opacity:1 !important; color:#e53935; }
   .week-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
   .btn-action-copy { padding:7px 14px; border:none; border-radius:6px; cursor:pointer; font-size:.82em; font-weight:600; background:#e8f4fd; color:#1565c0; border:1px solid #bbdefb; transition:all .2s; }
   .btn-action-copy:hover { background:#1565c0; color:white; }
   .btn-action-random { padding:7px 14px; border:none; border-radius:6px; cursor:pointer; font-size:.82em; font-weight:600; background:#f3e5f5; color:#6a1b9a; border:1px solid #ce93d8; transition:all .2s; }
   .btn-action-random:hover { background:#6a1b9a; color:white; }
-  .servings-row { display:flex; align-items:center; justify-content:center; gap:4px; margin-top:2px; font-size:.72em; color:var(--secondary-text-color); }
-  .servings-row input { width:36px; padding:2px 4px; border:1px solid var(--divider-color,#ddd); border-radius:4px; font-size:.9em; background:var(--input-fill-color,#f5f5f5); color:var(--primary-text-color); text-align:center; }
 
   /* ===== RECIPES ===== */
   .recipe-toolbar { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
