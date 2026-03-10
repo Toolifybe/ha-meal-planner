@@ -1,17 +1,18 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 
-Plan your weekly meals, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
+Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
 ---
 
 ## ✨ Features
 
-- 📅 **Weekly meal planner** — plan breakfast, lunch & dinner per day
+- 📅 **Weekly dinner planner** — one warm meal per day, clean 2-column layout
 - 📖 **Recipe library** — with photo, ingredients, steps, tags & difficulty
 - 🛒 **Auto shopping list** — generated from the week's recipes, grouped by shop category
+- 📌 **Fixed products** — always-needed items (bread, milk, ...) added automatically on every generation
 - 🌙 **Tonight's dinner widget** — always visible on the planner tab
 - 🎲 **Random dinner** button — auto-fills the week with random recipes
 - 📋 **Copy previous week** — reuse last week's plan
@@ -76,6 +77,7 @@ ha-meal-planner/
 /config/meal_planner_recipes.json
 /config/meal_planner_planning.json
 /config/meal_planner_shopping.json
+/config/meal_planner_fixed_products.json
 ```
 
 ---
@@ -94,6 +96,8 @@ ha-meal-planner/
 | POST | `/api/meal_planner/shopping/{week}` | Generate shopping list |
 | PUT | `/api/meal_planner/shopping/{week}` | Update shopping list |
 | GET | `/api/meal_planner/today` | Tonight's dinner |
+| GET | `/api/meal_planner/fixed_products` | Get fixed products |
+| PUT | `/api/meal_planner/fixed_products` | Save fixed products |
 
 ---
 
@@ -111,28 +115,26 @@ Add a recipe via automation.
 
 ## 📋 Changelog
 
+### v1.1.0
+- 📅 Weekplanner toont enkel avondeten in een overzichtelijke 2-kolom layout
+- 📌 Vaste producten: sla standaard boodschappen op (brood, melk, ...) die automatisch worden meegenomen bij elke generatie
+- 👤 Aantal personen instelbaar per dag, direct in de plannerrij
+
+### v1.0.5
+- 🐛 Betrouwbare detectie van extra items via ID-prefix
+
+### v1.0.4
+- ✏️ Extra boodschappen items bewerkbaar en verwijderbaar via ✏️ knop
+
 ### v1.0.3
-- 🎨 Styled week action buttons (copy & random)
+- 🎨 Gestileerde actieknoppen weekplanner (kopieer & willekeurig)
 
 ### v1.0.2
-- ➕ Extra shopping items now have amount, unit and category
-- ✏️ Existing extra items can be edited or deleted
+- ➕ Extra boodschappen items met hoeveelheid, eenheid en categorie
+- ✏️ Bestaande extra items bewerkbaar en verwijderbaar
 
 ### v1.0.1
-- 🎨 Improved week planner styling
-- 🔵 Today highlighted with color accent instead of filled block
-- 📍 Meal type row labels moved to left side of grid
+- 🎨 Verbeterde weekplanner styling
 
 ### v1.0.0
-- 🎉 Initial release
-- Weekly planner with breakfast/lunch/dinner
-- Recipe library with photo, tags, ingredients, steps
-- Auto-generated shopping list grouped by category
-- Copy previous week & random dinner features
-- Tonight's dinner widget
-
----
-
-## 📄 License
-
-MIT License
+- 🎉 Eerste release

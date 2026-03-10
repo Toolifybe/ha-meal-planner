@@ -3,13 +3,15 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.0.5";
+const MP_VERSION = "1.1.0";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
 const DAYS_FULL = ["Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag","Zondag"];
 const MEAL_TYPES = ["breakfast","lunch","dinner"];
 const MEAL_LABELS = { breakfast: "🌅 Ontbijt", lunch: "☀️ Lunch", dinner: "🌙 Avondeten" };
+// Only dinner shown in planner
+const PLANNER_MEAL = "dinner";
 const DIFFICULTIES = { easy: "Makkelijk", medium: "Gemiddeld", hard: "Moeilijk" };
 const CATEGORIES = ["ontbijt","lunch","avondeten","snack","dessert","soep","salade"];
 const SHOP_CATEGORIES = [
@@ -120,6 +122,12 @@ const STYLES = `
   .recipe-tag { background:var(--primary-color); color:white; border-radius:10px; padding:1px 7px; font-size:.7em; }
   .recipe-actions-row { display:flex; gap:4px; margin-top:6px; }
 
+  /* Sub-tabs */
+  .sub-tabs { display:flex; gap:4px; margin-bottom:14px; border-bottom:2px solid var(--divider-color,#eee); }
+  .sub-tab { background:none; border:none; padding:8px 14px; font-size:.85em; font-weight:600; cursor:pointer; color:var(--secondary-text-color); border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .2s; }
+  .sub-tab.active { color:var(--primary-color); border-bottom-color:var(--primary-color); }
+  .sub-tab:hover { color:var(--primary-color); }
+
   /* ===== SHOPPING ===== */
   .shopping-header { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
   .shop-week-label { font-weight:600; font-size:.95em; flex:1; color:var(--primary-text-color); }
@@ -223,6 +231,7 @@ class MealPlannerCard extends HTMLElement {
     this._recipes = [];
     this._planning = {};
     this._shopping = {};
+    this._fixedProducts = [];
     this._todayRecipe = null;
     this._currentWeek = getWeekKey();
     this._shoppingWeek = getWeekKey();
@@ -252,6 +261,7 @@ class MealPlannerCard extends HTMLElement {
       this._fetchPlanning(this._currentWeek),
       this._fetchShopping(this._shoppingWeek),
       this._fetchToday(),
+      this._fetchFixedProducts(),
     ]);
   }
 
@@ -331,7 +341,7 @@ class MealPlannerCard extends HTMLElement {
   }
 
   _getPlanning(week) {
-    return this._planning[week] || { days: Object.fromEntries(DAYS_NL.map(d => [d, { breakfast: null, lunch: null, dinner: null, servings: 4 }])) };
+    return this._planning[week] || { days: Object.fromEntries(DAYS_NL.map(d => [d, { dinner: null, servings: 4 }])) };
   }
 
   // ─── RENDER SHELL ──────────────────────────────────────────────
@@ -372,16 +382,36 @@ class MealPlannerCard extends HTMLElement {
         </div>
 
         <div class="tab-content" id="tab-shopping">
-          <div class="shopping-header">
-            <button class="btn btn-secondary btn-sm" id="shop-prev-week">◀</button>
-            <span class="shop-week-label" id="shop-week-label"></span>
-            <button class="btn btn-secondary btn-sm" id="shop-next-week">▶</button>
-            <button class="btn btn-primary btn-sm" id="generate-shopping">🔄 Genereer</button>
+          <!-- Sub-tabs -->
+          <div class="sub-tabs">
+            <button class="sub-tab active" id="subtab-week-btn">📋 Weeklijst</button>
+            <button class="sub-tab" id="subtab-fixed-btn">📌 Vaste producten</button>
           </div>
-          <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-          <div id="shopping-list"></div>
-          <div style="margin-top:12px;">
-            <button class="btn btn-secondary btn-sm" id="add-extra-btn" style="width:100%">+ Extra item toevoegen</button>
+
+          <!-- Week shopping list -->
+          <div id="subtab-week">
+            <div class="shopping-header">
+              <button class="btn btn-secondary btn-sm" id="shop-prev-week">◀</button>
+              <span class="shop-week-label" id="shop-week-label"></span>
+              <button class="btn btn-secondary btn-sm" id="shop-next-week">▶</button>
+              <button class="btn btn-primary btn-sm" id="generate-shopping">🔄 Genereer</button>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+            <div id="shopping-list"></div>
+            <div style="margin-top:12px;">
+              <button class="btn btn-secondary btn-sm" id="add-extra-btn" style="width:100%">+ Extra item toevoegen</button>
+            </div>
+          </div>
+
+          <!-- Fixed products -->
+          <div id="subtab-fixed" style="display:none">
+            <p style="font-size:.85em;color:var(--secondary-text-color);margin:0 0 12px">
+              Vaste producten worden automatisch toegevoegd bij elke boodschappenlijst generatie.
+            </p>
+            <div id="fixed-products-list"></div>
+            <div style="margin-top:12px;">
+              <button class="btn btn-secondary btn-sm" id="add-fixed-btn" style="width:100%">+ Vast product toevoegen</button>
+            </div>
           </div>
         </div>
       </ha-card>
@@ -583,6 +613,22 @@ class MealPlannerCard extends HTMLElement {
     });
     r.getElementById("generate-shopping").addEventListener("click", () => this._generateShopping(this._shoppingWeek));
 
+    // Sub-tabs shopping
+    r.getElementById("subtab-week-btn").addEventListener("click", () => {
+      r.getElementById("subtab-week").style.display = "";
+      r.getElementById("subtab-fixed").style.display = "none";
+      r.getElementById("subtab-week-btn").classList.add("active");
+      r.getElementById("subtab-fixed-btn").classList.remove("active");
+    });
+    r.getElementById("subtab-fixed-btn").addEventListener("click", () => {
+      r.getElementById("subtab-week").style.display = "none";
+      r.getElementById("subtab-fixed").style.display = "";
+      r.getElementById("subtab-week-btn").classList.remove("active");
+      r.getElementById("subtab-fixed-btn").classList.add("active");
+      this._renderFixedProducts();
+    });
+    r.getElementById("add-fixed-btn").addEventListener("click", () => this._openFixedProductModal(null));
+
     // Extra item modal
     r.getElementById("add-extra-btn").addEventListener("click", () => this._openExtraModal());
     r.getElementById("ei-cancel").addEventListener("click", () => r.getElementById("extra-modal").classList.remove("open"));
@@ -770,6 +816,7 @@ class MealPlannerCard extends HTMLElement {
     r.getElementById("ei-unit").value = item?.unit || "";
     r.getElementById("ei-category").value = item?.shop_category || "overige";
     r.getElementById("ei-delete").style.display = item ? "inline-flex" : "none";
+    r.getElementById("ei-save").dataset.mode = "extra";
     r.getElementById("extra-modal").classList.add("open");
     setTimeout(() => r.getElementById("ei-name").focus(), 50);
   }
@@ -779,34 +826,121 @@ class MealPlannerCard extends HTMLElement {
     const name = r.getElementById("ei-name").value.trim();
     if (!name) { r.getElementById("ei-name").style.borderColor = "red"; return; }
     r.getElementById("ei-name").style.borderColor = "";
-    const week = this._shoppingWeek;
-    const shopping = JSON.parse(JSON.stringify(this._shopping[week] || { items: [], extra_items: [] }));
-    shopping.extra_items = shopping.extra_items || [];
+    const mode = r.getElementById("ei-save").dataset.mode;
     const itemData = {
-      id: this._editingExtraItem?.id || "e_" + Date.now(),
+      id: (this._editingExtraItem || this._editingFixedProduct)?.id || (mode === "fixed" ? "f_" : "e_") + Date.now(),
       name,
       amount: parseFloat(r.getElementById("ei-amount").value) || 0,
       unit: r.getElementById("ei-unit").value.trim(),
       shop_category: r.getElementById("ei-category").value,
       checked: this._editingExtraItem?.checked || false,
     };
-    if (this._editingExtraItem) {
-      const idx = shopping.extra_items.findIndex(i => i.id === this._editingExtraItem.id);
-      if (idx >= 0) shopping.extra_items[idx] = itemData;
-    } else {
-      shopping.extra_items.push(itemData);
-    }
     r.getElementById("extra-modal").classList.remove("open");
-    this._saveShopping(week, shopping);
+
+    if (mode === "fixed") {
+      const products = JSON.parse(JSON.stringify(this._fixedProducts));
+      if (this._editingFixedProduct) {
+        const idx = products.findIndex(i => i.id === this._editingFixedProduct.id);
+        if (idx >= 0) products[idx] = itemData; else products.push(itemData);
+      } else {
+        products.push(itemData);
+      }
+      this._editingFixedProduct = null;
+      this._saveFixedProducts(products);
+    } else {
+      const week = this._shoppingWeek;
+      const shopping = JSON.parse(JSON.stringify(this._shopping[week] || { items: [], extra_items: [] }));
+      shopping.extra_items = shopping.extra_items || [];
+      if (this._editingExtraItem) {
+        const idx = shopping.extra_items.findIndex(i => i.id === this._editingExtraItem.id);
+        if (idx >= 0) shopping.extra_items[idx] = itemData;
+      } else {
+        shopping.extra_items.push(itemData);
+      }
+      this._saveShopping(week, shopping);
+    }
   }
 
   _deleteExtraItem() {
-    if (!this._editingExtraItem) return;
-    const week = this._shoppingWeek;
-    const shopping = JSON.parse(JSON.stringify(this._shopping[week] || { items: [], extra_items: [] }));
-    shopping.extra_items = (shopping.extra_items || []).filter(i => i.id !== this._editingExtraItem.id);
-    this.shadowRoot.getElementById("extra-modal").classList.remove("open");
-    this._saveShopping(week, shopping);
+    const r = this.shadowRoot;
+    const mode = r.getElementById("ei-save").dataset.mode;
+    r.getElementById("extra-modal").classList.remove("open");
+    if (mode === "fixed") {
+      if (!this._editingFixedProduct) return;
+      const products = this._fixedProducts.filter(i => i.id !== this._editingFixedProduct.id);
+      this._editingFixedProduct = null;
+      this._saveFixedProducts(products);
+    } else {
+      if (!this._editingExtraItem) return;
+      const week = this._shoppingWeek;
+      const shopping = JSON.parse(JSON.stringify(this._shopping[week] || { items: [], extra_items: [] }));
+      shopping.extra_items = (shopping.extra_items || []).filter(i => i.id !== this._editingExtraItem.id);
+      this._saveShopping(week, shopping);
+    }
+  }
+
+  async _fetchFixedProducts() {
+    try {
+      const res = await this._hass.callApi("GET", "meal_planner/fixed_products");
+      this._fixedProducts = res || [];
+      this._renderFixedProducts();
+    } catch(e) { this._fixedProducts = []; }
+  }
+
+  async _saveFixedProducts(products) {
+    try {
+      await this._hass.callApi("PUT", "meal_planner/fixed_products", products);
+      this._fixedProducts = products;
+      this._renderFixedProducts();
+    } catch(e) { console.error("MP fixed products error:", e); }
+  }
+
+  _renderFixedProducts() {
+    const container = this.shadowRoot.getElementById("fixed-products-list");
+    if (!container) return;
+    if (!this._fixedProducts.length) {
+      container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--secondary-text-color);font-size:.85em;">Nog geen vaste producten.<br>Voeg brood, melk, beleg, ... toe.</div>`;
+      return;
+    }
+    container.innerHTML = "";
+    // Group by category
+    const grouped = {};
+    this._fixedProducts.forEach(p => {
+      const cat = p.shop_category || "overige";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(p);
+    });
+    Object.keys(grouped).sort().forEach(cat => {
+      const section = document.createElement("div");
+      section.className = "shop-category-section";
+      section.innerHTML = `<div class="shop-cat-header">📦 ${cat}</div>`;
+      grouped[cat].forEach(item => {
+        const row = document.createElement("div");
+        row.className = "shop-item";
+        const amtStr = item.amount ? `${item.amount} ${item.unit || ""}`.trim() : "";
+        row.innerHTML = `
+          <span class="item-name" style="flex:1">${item.name}</span>
+          ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}
+          <button style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 6px;opacity:.5;color:var(--primary-text-color);">✏️</button>`;
+        row.querySelector("button").addEventListener("click", () => this._openFixedProductModal(item));
+        section.appendChild(row);
+      });
+      container.appendChild(section);
+    });
+  }
+
+  _openFixedProductModal(item = null) {
+    this._editingFixedProduct = item;
+    const r = this.shadowRoot;
+    r.getElementById("extra-modal-title").textContent = item ? "Vast product bewerken" : "Vast product toevoegen";
+    r.getElementById("ei-name").value = item?.name || "";
+    r.getElementById("ei-amount").value = item?.amount || "";
+    r.getElementById("ei-unit").value = item?.unit || "";
+    r.getElementById("ei-category").value = item?.shop_category || "overige";
+    r.getElementById("ei-delete").style.display = item ? "inline-flex" : "none";
+    r.getElementById("ei-save").dataset.mode = "fixed";
+    r.getElementById("extra-modal").classList.add("open");
+    setTimeout(() => r.getElementById("ei-name").focus(), 50);
   }
 
   // ─── RENDER PLANNER ────────────────────────────────────────────
@@ -841,69 +975,59 @@ class MealPlannerCard extends HTMLElement {
 
     const grid = r.getElementById("week-grid");
     grid.innerHTML = "";
+    grid.style.cssText = "";
     const plan = this._getPlanning(this._currentWeek);
     const recipesMap = this._recipesMap();
 
-    // Row labels column
-    const labelCol = document.createElement("div");
-    labelCol.className = "day-col";
-    labelCol.style.cssText = "display:flex;flex-direction:column;gap:3px;width:28px;flex-shrink:0;";
-    labelCol.innerHTML = `
-      <div style="height:32px"></div>
-      <div style="height:44px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-size:.6em;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--secondary-text-color);opacity:.5;writing-mode:horizontal-tb;">🌅</div>
-      <div style="height:44px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-size:.6em;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--secondary-text-color);opacity:.5;">☀️</div>
-      <div style="height:44px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-size:.6em;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--secondary-text-color);opacity:.5;">🌙</div>
-      <div style="height:30px"></div>
-    `;
-    grid.style.cssText = "display:flex;gap:4px;";
-    grid.appendChild(labelCol);
-
     DAYS_NL.forEach((day, di) => {
-      const dayData = plan.days?.[day] || { breakfast: null, lunch: null, dinner: null, servings: 4 };
+      const dayData = plan.days?.[day] || { dinner: null, servings: 4 };
       const isToday = dates[di].toDateString() === todayStr;
-      const col = document.createElement("div");
-      col.className = "day-col";
+      const recipeId = dayData.dinner;
+      const recipe = recipeId ? recipesMap[recipeId] : null;
 
-      const header = document.createElement("div");
-      header.className = "day-header" + (isToday ? " today" : "");
-      header.innerHTML = `${DAYS_LABEL[di]}<div class="day-date">${dates[di].getDate()}/${dates[di].getMonth()+1}</div>`;
-      col.appendChild(header);
+      const row = document.createElement("div");
+      row.className = "planner-row" + (isToday ? " today" : "");
 
-      MEAL_TYPES.forEach(mealType => {
-        const recipeId = dayData[mealType];
-        const recipe = recipeId ? recipesMap[recipeId] : null;
-        const slot = document.createElement("div");
-        slot.className = "meal-slot" + (recipe ? " filled" : "");
-        if (recipe) {
-          slot.innerHTML = `
-            <div class="meal-type-dot"></div>
-            <div class="meal-name">${recipe.name}</div>
-            <button class="remove-meal">×</button>`;
-          slot.querySelector(".remove-meal").addEventListener("click", e => {
-            e.stopPropagation();
-            const newPlan = JSON.parse(JSON.stringify(plan));
-            newPlan.days[day][mealType] = null;
-            this._savePlanning(this._currentWeek, newPlan);
-          });
-          slot.addEventListener("click", () => this._openDetailModal(recipe));
-        } else {
-          slot.innerHTML = `<div class="meal-type-dot"></div><div class="meal-empty">+</div>`;
-          slot.addEventListener("click", () => this._openPickModal(day, mealType));
-        }
-        col.appendChild(slot);
-      });
+      // Day label
+      const dayLabel = document.createElement("div");
+      dayLabel.className = "planner-day-label";
+      dayLabel.innerHTML = `<span class="planner-day-name">${DAYS_FULL[di]}</span><span class="planner-day-date">${dates[di].getDate()}/${dates[di].getMonth()+1}</span>`;
+      row.appendChild(dayLabel);
 
-      // Servings
-      const servRow = document.createElement("div");
-      servRow.className = "servings-row";
-      servRow.innerHTML = `👤<input type="number" min="1" max="20" value="${dayData.servings || 4}" title="Aantal personen" />`;
-      servRow.querySelector("input").addEventListener("change", e => {
-        const newPlan = JSON.parse(JSON.stringify(plan));
-        newPlan.days[day].servings = parseInt(e.target.value) || 4;
-        this._savePlanning(this._currentWeek, newPlan);
-      });
-      col.appendChild(servRow);
-      grid.appendChild(col);
+      // Meal slot
+      const slot = document.createElement("div");
+      slot.className = "planner-meal-slot" + (recipe ? " filled" : "");
+      if (recipe) {
+        const imgHtml = recipe.image
+          ? `<img src="${recipe.image}" class="planner-meal-img" />`
+          : `<div class="planner-meal-img planner-meal-emoji">🍽️</div>`;
+        slot.innerHTML = `
+          ${imgHtml}
+          <div class="planner-meal-info">
+            <div class="planner-meal-name">${recipe.name}</div>
+            <div class="planner-meal-meta">${((recipe.prep_time||0)+(recipe.cook_time||0)) ? `⏱ ${(recipe.prep_time||0)+(recipe.cook_time||0)}m · ` : ""}👤 <input type="number" class="servings-inline" min="1" max="20" value="${dayData.servings||4}" /></div>
+          </div>
+          <button class="planner-remove-btn">×</button>`;
+        slot.querySelector(".planner-remove-btn").addEventListener("click", e => {
+          e.stopPropagation();
+          const newPlan = JSON.parse(JSON.stringify(plan));
+          newPlan.days[day].dinner = null;
+          this._savePlanning(this._currentWeek, newPlan);
+        });
+        slot.querySelector(".servings-inline").addEventListener("change", e => {
+          e.stopPropagation();
+          const newPlan = JSON.parse(JSON.stringify(plan));
+          newPlan.days[day].servings = parseInt(e.target.value) || 4;
+          this._savePlanning(this._currentWeek, newPlan);
+        });
+        slot.querySelector(".servings-inline").addEventListener("click", e => e.stopPropagation());
+        slot.addEventListener("click", () => this._openDetailModal(recipe));
+      } else {
+        slot.innerHTML = `<div class="planner-meal-empty">+ Kies maaltijd</div>`;
+        slot.addEventListener("click", () => this._openPickModal(day, "dinner"));
+      }
+      row.appendChild(slot);
+      grid.appendChild(row);
     });
   }
 
