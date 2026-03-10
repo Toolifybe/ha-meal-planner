@@ -91,7 +91,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
         await hass.async_add_executor_job(_save_json, recipes_path, recipes)
         hass.bus.fire("meal_planner_updated", {})
 
-    hass.services.register(DOMAIN, "add_recipe", handle_add_recipe)
+    hass.services.async_register(DOMAIN, "add_recipe", handle_add_recipe)
     return True
 
 
