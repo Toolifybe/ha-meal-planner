@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-1.0.2-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)
 
 Plan your weekly meals, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -10,14 +10,14 @@ Plan your weekly meals, manage recipes, and auto-generate a shopping list — al
 ## ✨ Features
 
 - 📅 **Weekly meal planner** — plan breakfast, lunch & dinner per day
-- 📖 **Recipe library** — with photo, ingredients, steps, tags, difficulty
+- 📖 **Recipe library** — with photo, ingredients, steps, tags & difficulty
 - 🛒 **Auto shopping list** — generated from the week's recipes, grouped by shop category
 - 🌙 **Tonight's dinner widget** — always visible on the planner tab
 - 🎲 **Random dinner** button — auto-fills the week with random recipes
 - 📋 **Copy previous week** — reuse last week's plan
 - 👤 **Servings per day** — scales ingredient amounts automatically
 - ✅ **Shopping checklist** with progress bar
-- ➕ **Extra items** on the shopping list
+- ➕ **Extra items** with amount, unit and shop category
 
 ---
 
@@ -51,7 +51,26 @@ type: custom:meal-planner-card
 
 ---
 
-## 🗂️ Data Storage
+## 🗂️ Directory Structure
+
+```
+ha-meal-planner/
+├── hacs.json
+├── README.md
+├── LICENSE
+└── custom_components/
+    └── meal_planner/
+        ├── __init__.py
+        ├── manifest.json
+        ├── services.yaml
+        ├── strings.json
+        └── frontend/
+            └── meal-planner-card.js
+```
+
+---
+
+## 💾 Data Storage
 
 ```
 /config/meal_planner_recipes.json
@@ -83,12 +102,26 @@ type: custom:meal-planner-card
 ### `meal_planner.add_recipe`
 Add a recipe via automation.
 
-### `meal_planner.get_todays_dinner`
-Returns tonight's planned recipe — use in automations to announce via TTS.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | ✅ | Name of the recipe |
+| `description` | string | ❌ | Short description |
 
 ---
 
 ## 📋 Changelog
+
+### v1.0.3
+- 🎨 Styled week action buttons (copy & random)
+
+### v1.0.2
+- ➕ Extra shopping items now have amount, unit and category
+- ✏️ Existing extra items can be edited or deleted
+
+### v1.0.1
+- 🎨 Improved week planner styling
+- 🔵 Today highlighted with color accent instead of filled block
+- 📍 Meal type row labels moved to left side of grid
 
 ### v1.0.0
 - 🎉 Initial release
@@ -96,6 +129,7 @@ Returns tonight's planned recipe — use in automations to announce via TTS.
 - Recipe library with photo, tags, ingredients, steps
 - Auto-generated shopping list grouped by category
 - Copy previous week & random dinner features
+- Tonight's dinner widget
 
 ---
 

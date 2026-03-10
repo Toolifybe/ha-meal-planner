@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.0.2";
+const MP_VERSION = "1.0.3";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -98,6 +98,10 @@ const STYLES = `
   .meal-slot.filled:hover .remove-meal { display:flex; }
   .meal-row-label { font-size:.6em; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--secondary-text-color); opacity:.6; padding:4px 0 1px; grid-column:1/-1; }
   .week-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .btn-action-copy { padding:7px 14px; border:none; border-radius:6px; cursor:pointer; font-size:.82em; font-weight:600; background:#e8f4fd; color:#1565c0; border:1px solid #bbdefb; transition:all .2s; }
+  .btn-action-copy:hover { background:#1565c0; color:white; }
+  .btn-action-random { padding:7px 14px; border:none; border-radius:6px; cursor:pointer; font-size:.82em; font-weight:600; background:#f3e5f5; color:#6a1b9a; border:1px solid #ce93d8; transition:all .2s; }
+  .btn-action-random:hover { background:#6a1b9a; color:white; }
   .servings-row { display:flex; align-items:center; justify-content:center; gap:4px; margin-top:2px; font-size:.72em; color:var(--secondary-text-color); }
   .servings-row input { width:36px; padding:2px 4px; border:1px solid var(--divider-color,#ddd); border-radius:4px; font-size:.9em; background:var(--input-fill-color,#f5f5f5); color:var(--primary-text-color); text-align:center; }
 
@@ -350,8 +354,8 @@ class MealPlannerCard extends HTMLElement {
           </div>
           <div class="week-grid" id="week-grid"></div>
           <div class="week-actions">
-            <button class="btn btn-secondary btn-sm" id="copy-prev-week">📋 Kopieer vorige week</button>
-            <button class="btn btn-secondary btn-sm" id="random-dinners">🎲 Willekeurige avondmaaltijden</button>
+            <button class="btn btn-action-copy" id="copy-prev-week">📋 Kopieer vorige week</button>
+            <button class="btn btn-action-random" id="random-dinners">🎲 Willekeurige avondmaaltijden</button>
           </div>
         </div>
 
