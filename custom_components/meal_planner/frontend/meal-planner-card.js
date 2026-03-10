@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.0.3";
+const MP_VERSION = "1.0.5";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -1009,22 +1009,29 @@ class MealPlannerCard extends HTMLElement {
       section.className = "shop-category-section";
       section.innerHTML = `<div class="shop-cat-header">📦 ${cat}</div>`;
       grouped[cat].forEach(item => {
+        const isExtra = item.id && item.id.startsWith("e_");
         const row = document.createElement("div");
         row.className = "shop-item" + (item.checked ? " checked" : "");
         const amtStr = item.amount ? `${item.amount} ${item.unit || ""}`.trim() : "";
         row.innerHTML = `
           <input type="checkbox" ${item.checked ? "checked" : ""} />
           <span class="item-name">${item.name}</span>
-          ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}`;
+          ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}
+          ${isExtra ? `<button class="edit-extra-btn" title="Bewerken / Verwijderen" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:var(--primary-text-color);flex-shrink:0;">✏️</button>` : ""}`;
         row.querySelector("input").addEventListener("change", e => {
           const newChecked = e.target.checked;
           const newShopping = JSON.parse(JSON.stringify(shopping));
-          // Update in both lists
           [...(newShopping.items || []), ...(newShopping.extra_items || [])].forEach(i => {
             if (i.id === item.id) i.checked = newChecked;
           });
           this._saveShopping(week, newShopping);
         });
+        if (isExtra) {
+          row.querySelector(".edit-extra-btn").addEventListener("click", e => {
+            e.stopPropagation();
+            this._openExtraModal(item);
+          });
+        }
         section.appendChild(row);
       });
       container.appendChild(section);
