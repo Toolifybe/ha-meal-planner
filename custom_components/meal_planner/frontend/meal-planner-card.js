@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.1.0";
+const MP_VERSION = "1.1.2";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -100,9 +100,10 @@ const STYLES = `
   .planner-meal-meta { font-size:.75em; color:var(--secondary-text-color); margin-top:3px; display:flex; align-items:center; gap:5px; }
   .servings-inline { width:34px; padding:2px 4px; border:1px solid var(--divider-color,#ddd); border-radius:4px; font-size:.9em; background:var(--input-fill-color,#f5f5f5); color:var(--primary-text-color); text-align:center; }
   .planner-meal-empty { flex:1; font-size:.85em; color:var(--secondary-text-color); opacity:.5; }
-  .planner-remove-btn { background:none; border:none; border-radius:50%; width:24px; height:24px; font-size:14px; cursor:pointer; color:var(--secondary-text-color); display:flex; align-items:center; justify-content:center; flex-shrink:0; opacity:0; transition:opacity .15s; padding:0; line-height:1; }
+  .planner-remove-btn { background:none; border:none; border-radius:50%; width:28px; height:28px; font-size:14px; cursor:pointer; color:var(--secondary-text-color); display:flex; align-items:center; justify-content:center; flex-shrink:0; opacity:0; transition:opacity .15s; padding:0; line-height:1; }
   .planner-meal-slot:hover .planner-remove-btn { opacity:.5; }
   .planner-remove-btn:hover { opacity:1 !important; color:#e53935; }
+  @media (hover: none) { .planner-remove-btn { opacity:.4; } .planner-remove-btn:active { color:#e53935; opacity:1; } }
   .week-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
   .btn-action-copy { padding:7px 14px; border:none; border-radius:6px; cursor:pointer; font-size:.82em; font-weight:600; background:#e8f4fd; color:#1565c0; border:1px solid #bbdefb; transition:all .2s; }
   .btn-action-copy:hover { background:#1565c0; color:white; }
@@ -258,8 +259,9 @@ class MealPlannerCard extends HTMLElement {
   static getStubConfig() { return {}; }
 
   async _fetchAll() {
+    // Fetch recipes first — planner & today depend on them
+    await this._fetchRecipes();
     await Promise.all([
-      this._fetchRecipes(),
       this._fetchPlanning(this._currentWeek),
       this._fetchShopping(this._shoppingWeek),
       this._fetchToday(),
