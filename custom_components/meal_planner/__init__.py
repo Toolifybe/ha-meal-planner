@@ -70,6 +70,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
     hass.http.register_view(ShoppingItemView(shopping_path))
     hass.http.register_view(TodaysDinnerView(planning_path, recipes_path))
     hass.http.register_view(FixedProductsView(fixed_path))
+    hass.http.register_view(ImportRecipeView())
 
     async def handle_add_recipe(call: ServiceCall):
         recipes = await hass.async_add_executor_job(_load_json, recipes_path, [])
@@ -307,6 +308,149 @@ class ShoppingItemView(HomeAssistantView):
         all_shopping[week] = shopping
         await hass.async_add_executor_job(_save_json, self._shopping_path, all_shopping)
         return self.json({"ok": True})
+
+
+def _parse_duration(iso_duration):
+    """Parse ISO 8601 duration like PT45M or PT1H30M to minutes."""
+    if not iso_duration:
+        return 0
+    match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?', iso_duration)
+    if not match:
+        return 0
+    hours = int(match.group(1) or 0)
+    minutes = int(match.group(2) or 0)
+    return hours * 60 + minutes
+
+
+def _parse_ingredient(text):
+    """Parse ingredient string like '500 g gehakt' into structured data."""
+    text = text.strip()
+    units = ['kg','g','ml','l','el','tl','dl','cl','stuks','stuk','snede','sneden','takje','takjes','teen','teentje','teentjes','bosje','blikje','blik','pak','zakje']
+    # Try to match: number + optional fraction + unit + name
+    pattern = r'^(\d+(?:[.,]\d+)?(?:\s*[-\/]\s*\d+(?:[.,]\d+)?)?)\s*(' + '|'.join(units) + r')\.?\s+(.+)$'
+    m = re.match(pattern, text, re.IGNORECASE)
+    if m:
+        amt_str = m.group(1).replace(',', '.').strip()
+        try:
+            amount = float(amt_str)
+        except:
+            amount = 0
+        return {"name": m.group(3).strip(), "amount": amount, "unit": m.group(2).lower(), "shop_category": "overige"}
+    # Try just number + name
+    m2 = re.match(r'^(\d+(?:[.,]\d+)?)\s+(.+)$', text)
+    if m2:
+        try:
+            amount = float(m2.group(1).replace(',', '.'))
+        except:
+            amount = 0
+        return {"name": m2.group(2).strip(), "amount": amount, "unit": "stuk", "shop_category": "overige"}
+    return {"name": text, "amount": 0, "unit": "", "shop_category": "overige"}
+
+
+class ImportRecipeView(HomeAssistantView):
+    url = "/api/meal_planner/import_recipe"
+    name = "api:meal_planner:import_recipe"
+    requires_auth = True
+
+    async def post(self, request):
+        hass = request.app["hass"]
+        body = await request.json()
+        url = body.get("url", "").strip()
+        if not url:
+            return self.json({"error": "Geen URL opgegeven"})
+        try:
+            recipe = await hass.async_add_executor_job(self._scrape, url)
+            return self.json(recipe)
+        except Exception as e:
+            return self.json({"error": str(e)})
+
+    def _scrape(self, url):
+        import html
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; HomeAssistant MealPlanner)",
+            "Accept": "text/html,application/xhtml+xml",
+            "Accept-Language": "nl-BE,nl;q=0.9",
+        })
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+
+        # Find JSON-LD blocks
+        json_ld_blocks = re.findall(r"""<script[^>]+type=["'"]application/ld\+json["'"][^>]*>(.*?)</script>""", raw, re.DOTALL)
+        recipe_data = None
+        for block in json_ld_blocks:
+            try:
+                data = json.loads(block.strip())
+                # Handle @graph array
+                if isinstance(data, dict) and data.get("@graph"):
+                    data = data["@graph"]
+                if isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict) and item.get("@type") in ("Recipe", ["Recipe"]):
+                            recipe_data = item
+                            break
+                elif isinstance(data, dict) and data.get("@type") in ("Recipe", ["Recipe"]):
+                    recipe_data = data
+            except:
+                continue
+
+        if not recipe_data:
+            raise Exception("Geen recept gevonden op deze pagina. Probeer een directe receptpagina.")
+
+        # Extract image
+        image = None
+        img_field = recipe_data.get("image")
+        if isinstance(img_field, str):
+            image = img_field
+        elif isinstance(img_field, list) and img_field:
+            image = img_field[0] if isinstance(img_field[0], str) else img_field[0].get("url")
+        elif isinstance(img_field, dict):
+            image = img_field.get("url")
+
+        # Extract ingredients
+        raw_ings = recipe_data.get("recipeIngredient", [])
+        ingredients = [_parse_ingredient(html.unescape(i)) for i in raw_ings if i.strip()]
+
+        # Extract steps
+        raw_steps = recipe_data.get("recipeInstructions", [])
+        steps = []
+        for s in raw_steps:
+            if isinstance(s, str):
+                steps.append(s.strip())
+            elif isinstance(s, dict):
+                text = s.get("text") or s.get("name") or ""
+                if text.strip():
+                    steps.append(html.unescape(text.strip()))
+            elif isinstance(s, list):
+                for sub in s:
+                    if isinstance(sub, dict):
+                        text = sub.get("text") or sub.get("name") or ""
+                        if text.strip():
+                            steps.append(html.unescape(text.strip()))
+
+        # Times
+        prep = _parse_duration(recipe_data.get("prepTime", ""))
+        cook = _parse_duration(recipe_data.get("cookTime") or recipe_data.get("totalTime", ""))
+        if not prep and not cook:
+            total = _parse_duration(recipe_data.get("totalTime", ""))
+            cook = total
+
+        name = html.unescape(recipe_data.get("name", "").strip())
+        description = html.unescape((recipe_data.get("description") or "").strip())
+
+        return {
+            "name": name,
+            "description": description[:200] if description else "",
+            "category": "avondeten",
+            "servings": 4,
+            "prep_time": prep,
+            "cook_time": cook,
+            "difficulty": "medium",
+            "source_url": url,
+            "image": image,
+            "tags": [],
+            "ingredients": ingredients,
+            "steps": steps,
+        }
 
 
 class FixedProductsView(HomeAssistantView):

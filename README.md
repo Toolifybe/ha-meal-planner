@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-1.1.7-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -10,9 +10,13 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 ## ✨ Features
 
 - 📅 **Weekly dinner planner** — one warm meal per day, clean 2-column layout
+- 📝 **Day notes** — add a note per day (e.g. "guests", "takeaway")
 - 📖 **Recipe library** — with photo, ingredients, steps, tags & difficulty
+- ⭐ **Star ratings** — rate recipes from 1 to 5 stars
+- ❤️ **Favourites** — mark recipes as favourite and filter on them
+- 📥 **Import via URL** — import recipes from Dagelijkse Kost, Njam, and any other recipe site
 - 🛒 **Auto shopping list** — generated from the week's recipes, grouped by shop category
-- 📌 **Fixed products** — always-needed items (bread, milk, ...) added automatically on every generation
+- 📌 **Fixed products** — always-needed items (bread, milk, ...) you can add to any week's list
 - 🌙 **Tonight's dinner widget** — always visible on the planner tab
 - 🎲 **Random dinner** button — auto-fills the week with random recipes
 - 📋 **Copy previous week** — reuse last week's plan
@@ -98,13 +102,13 @@ ha-meal-planner/
 | GET | `/api/meal_planner/today` | Tonight's dinner |
 | GET | `/api/meal_planner/fixed_products` | Get fixed products |
 | PUT | `/api/meal_planner/fixed_products` | Save fixed products |
+| POST | `/api/meal_planner/import_recipe` | Import recipe from URL |
 
 ---
 
 ## 🤖 HA Services
 
 ### `meal_planner.add_recipe`
-Add a recipe via automation.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -115,26 +119,45 @@ Add a recipe via automation.
 
 ## 📋 Changelog
 
+### v1.3.0
+- ⭐ Recepten beoordelen met 1-5 sterren
+- ❤️ Favorieten markeren + filter op favorieten
+- 📝 Notitie per dag in de weekplanner (bv. "gasten", "takeaway")
+- Favorieten en best beoordeelde recepten komen bovenaan
+
+### v1.2.0
+- 📥 Recepten importeren via URL (JSON-LD scraping)
+- Werkt met Dagelijkse Kost, Njam, en elke andere receptensite
+
+### v1.1.7
+- 🗑️ Verwijderknop op extra items in weeklijst
+
+### v1.1.6
+- 🐛 Vaste producten worden nu correct opgeslagen en weergegeven
+
+### v1.1.5
+- 🗑️ Directe verwijderknop per vast product
+
+### v1.1.4
+- 🐛 Modalmode bijgehouden via instantie-variabele in plaats van dataset
+
+### v1.1.3
+- 📌 Vaste producten met checkboxes en "Toevoegen aan weeklijst" knop
+- Auto-merge bij generatie verwijderd — je kiest nu zelf wat je toevoegt
+
+### v1.1.2
+- 🐛 Race condition opgelost: recepten worden eerst geladen voor de planner rendert
+
+### v1.1.1
+- 📱 Verwijderknop altijd zichtbaar op touchscreen
+
 ### v1.1.0
-- 📅 Weekplanner toont enkel avondeten in een overzichtelijke 2-kolom layout
-- 📌 Vaste producten: sla standaard boodschappen op (brood, melk, ...) die automatisch worden meegenomen bij elke generatie
-- 👤 Aantal personen instelbaar per dag, direct in de plannerrij
+- 📅 Weekplanner toont enkel avondeten in 2-kolom layout
+- 📌 Vaste producten tab in boodschappen
+- 👤 Aantal personen instelbaar per dag
 
-### v1.0.5
-- 🐛 Betrouwbare detectie van extra items via ID-prefix
-
-### v1.0.4
-- ✏️ Extra boodschappen items bewerkbaar en verwijderbaar via ✏️ knop
-
-### v1.0.3
-- 🎨 Gestileerde actieknoppen weekplanner (kopieer & willekeurig)
-
-### v1.0.2
-- ➕ Extra boodschappen items met hoeveelheid, eenheid en categorie
-- ✏️ Bestaande extra items bewerkbaar en verwijderbaar
-
-### v1.0.1
-- 🎨 Verbeterde weekplanner styling
+### v1.0.x
+- Diverse bugfixes en styling verbeteringen
 
 ### v1.0.0
 - 🎉 Eerste release

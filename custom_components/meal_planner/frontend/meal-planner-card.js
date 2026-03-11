@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.1.7";
+const MP_VERSION = "1.3.0";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -109,6 +109,22 @@ const STYLES = `
   .btn-action-copy:hover { background:#1565c0; color:white; }
   .btn-action-random { padding:7px 14px; border:none; border-radius:6px; cursor:pointer; font-size:.82em; font-weight:600; background:#f3e5f5; color:#6a1b9a; border:1px solid #ce93d8; transition:all .2s; }
   .btn-action-random:hover { background:#6a1b9a; color:white; }
+
+  .import-spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--divider-color,#ddd); border-top-color:var(--primary-color); border-radius:50%; animation:spin .7s linear infinite; margin-right:6px; vertical-align:middle; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Stars */
+  .star-rating { display:flex; gap:2px; }
+  .star { font-size:1em; cursor:pointer; opacity:.3; transition:opacity .1s; line-height:1; }
+  .star.active { opacity:1; }
+  .star-display { font-size:.8em; letter-spacing:1px; }
+  .fav-btn { background:none; border:none; cursor:pointer; font-size:1.1em; padding:0; line-height:1; opacity:.4; transition:opacity .15s, transform .15s; }
+  .fav-btn.active { opacity:1; transform:scale(1.15); }
+
+  /* Notitie */
+  .planner-note { font-size:.75em; color:var(--secondary-text-color); padding:2px 10px 6px 12px; font-style:italic; cursor:pointer; }
+  .planner-note.empty { opacity:.4; }
+  .planner-note-input { width:100%; border:none; border-top:1px solid var(--divider-color,#eee); padding:6px 12px; font-size:.8em; font-family:inherit; background:transparent; color:var(--primary-text-color); outline:none; box-sizing:border-box; font-style:italic; }
 
   /* ===== RECIPES ===== */
   .recipe-toolbar { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
@@ -380,7 +396,9 @@ class MealPlannerCard extends HTMLElement {
               <option value="">Alle categorieën</option>
               ${CATEGORIES.map(c => `<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join("")}
             </select>
+            <button class="btn btn-secondary btn-sm" id="fav-filter-btn" title="Toon favorieten">⭐</button>
             <button class="btn btn-primary btn-sm" id="add-recipe-btn">+ Recept</button>
+            <button class="btn btn-action-copy" id="import-recipe-btn">📥 Importeer URL</button>
           </div>
           <div class="recipes-grid" id="recipes-grid"></div>
         </div>
@@ -466,6 +484,25 @@ class MealPlannerCard extends HTMLElement {
       </div>
 
       <!-- Recipe Edit Modal -->
+      <!-- URL Import Modal -->
+      <div class="modal-overlay" id="import-modal">
+        <div class="modal" style="max-width:420px;">
+          <h3>📥 Recept importeren</h3>
+          <p style="font-size:.85em;color:var(--secondary-text-color);margin:0 0 14px">
+            Plak een link van Dagelijkse Kost, Njam, of een andere receptensite.
+          </p>
+          <div class="form-group">
+            <label>URL</label>
+            <input type="url" id="import-url" placeholder="https://dagelijksekost.vrt.be/recepten/..." style="width:100%;box-sizing:border-box;" />
+          </div>
+          <div id="import-status" style="font-size:.83em;margin:8px 0;min-height:20px;"></div>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" id="import-cancel">Annuleren</button>
+            <button class="btn btn-primary" id="import-fetch-btn">🔍 Ophalen</button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-overlay" id="recipe-modal">
         <div class="modal">
           <h3 id="recipe-modal-title">Nieuw Recept</h3>
@@ -642,6 +679,20 @@ class MealPlannerCard extends HTMLElement {
     r.getElementById("ei-delete").addEventListener("click", () => this._deleteExtraItem());
 
     // Recipe search/filter
+    // Star rating clicks in recipe modal
+    r.querySelectorAll("#rm-star-rating .star").forEach(star => {
+      star.addEventListener("click", () => {
+        const val = parseInt(star.dataset.val);
+        r.querySelectorAll("#rm-star-rating .star").forEach(s => s.classList.toggle("active", parseInt(s.dataset.val) <= val));
+      });
+    });
+    // Favourites filter
+    r.getElementById("fav-filter-btn").addEventListener("click", () => {
+      this._favFilter = !this._favFilter;
+      r.getElementById("fav-filter-btn").style.opacity = this._favFilter ? "1" : ".6";
+      this._renderRecipes();
+    });
+
     r.getElementById("recipe-search").addEventListener("input", e => {
       this._recipeFilter = e.target.value.toLowerCase();
       this._renderRecipes();
@@ -653,6 +704,10 @@ class MealPlannerCard extends HTMLElement {
 
     // Add recipe
     r.getElementById("add-recipe-btn").addEventListener("click", () => this._openRecipeModal(null));
+    r.getElementById("import-recipe-btn").addEventListener("click", () => this._openImportModal());
+    r.getElementById("import-cancel").addEventListener("click", () => r.getElementById("import-modal").classList.remove("open"));
+    r.getElementById("import-fetch-btn").addEventListener("click", () => this._fetchImportUrl());
+    r.getElementById("import-url").addEventListener("keydown", e => { if (e.key === "Enter") this._fetchImportUrl(); });
 
     // Recipe modal
     r.getElementById("rm-cancel").addEventListener("click", () => r.getElementById("recipe-modal").classList.remove("open"));
@@ -757,6 +812,43 @@ class MealPlannerCard extends HTMLElement {
       .map(t => t.value.trim()).filter(Boolean);
   }
 
+  async _toggleFavourite(recipe) {
+    const updated = { ...recipe, favourite: !recipe.favourite };
+    await this._saveRecipe(updated, recipe.id);
+  }
+
+  _openImportModal() {
+    const r = this.shadowRoot;
+    r.getElementById("import-url").value = "";
+    r.getElementById("import-status").innerHTML = "";
+    r.getElementById("import-fetch-btn").disabled = false;
+    r.getElementById("import-modal").classList.add("open");
+    setTimeout(() => r.getElementById("import-url").focus(), 50);
+  }
+
+  async _fetchImportUrl() {
+    const r = this.shadowRoot;
+    const url = r.getElementById("import-url").value.trim();
+    if (!url) { r.getElementById("import-status").innerHTML = '<span style="color:#e53935">Vul een URL in.</span>'; return; }
+    const status = r.getElementById("import-status");
+    const btn = r.getElementById("import-fetch-btn");
+    status.innerHTML = '<span class="import-spinner"></span> Bezig met ophalen...';
+    btn.disabled = true;
+    try {
+      const result = await this._hass.callApi("POST", "meal_planner/import_recipe", { url });
+      if (result.error) {
+        status.innerHTML = `<span style="color:#e53935">❌ ${result.error}</span>`;
+        btn.disabled = false;
+        return;
+      }
+      r.getElementById("import-modal").classList.remove("open");
+      this._openRecipeModal(result);
+    } catch(e) {
+      status.innerHTML = '<span style="color:#e53935">❌ Kon de pagina niet ophalen. Probeer een andere URL.</span>';
+      btn.disabled = false;
+    }
+  }
+
   _openRecipeModal(recipe = null) {
     const r = this.shadowRoot;
     this._editingRecipe = recipe;
@@ -785,6 +877,11 @@ class MealPlannerCard extends HTMLElement {
     (recipe?.steps || []).forEach(s => this._addStepRow(s));
     // Delete btn
     r.getElementById("rm-delete").style.display = recipe ? "inline-flex" : "none";
+    // Rating stars
+    const stars = r.querySelectorAll("#rm-star-rating .star");
+    const rating = recipe?.rating || 0;
+    stars.forEach(s => s.classList.toggle("active", parseInt(s.dataset.val) <= rating));
+    r.getElementById("rm-favourite").checked = recipe?.favourite || false;
     r.getElementById("recipe-modal").classList.add("open");
     setTimeout(() => r.getElementById("rm-name").focus(), 50);
   }
@@ -804,6 +901,8 @@ class MealPlannerCard extends HTMLElement {
       cook_time: parseInt(r.getElementById("rm-cook").value) || 0,
       difficulty: r.getElementById("rm-difficulty").value,
       source_url: r.getElementById("rm-source").value.trim(),
+      rating: parseInt(r.querySelector("#rm-star-rating .star.active:last-of-type")?.dataset.val || "0") || 0,
+      favourite: r.getElementById("rm-favourite").checked,
       tags: this._getTags(),
       image: preview.style.display !== "none" ? preview.src : null,
       ingredients: this._getIngredients(),
@@ -1079,8 +1178,33 @@ class MealPlannerCard extends HTMLElement {
         slot.addEventListener("click", () => this._openPickModal(day, "dinner"));
       }
       row.appendChild(slot);
+
+      // Day note
+      const note = dayData.note || "";
+      const noteEl = document.createElement("div");
+      if (noteEl) {
+        // We'll add note as a full-width row below
+      }
       grid.appendChild(row);
+
+      // Note row
+      const noteRow = document.createElement("div");
+      noteRow.style.cssText = "margin:-4px 0 4px;";
+      noteRow.innerHTML = `<div class="planner-note ${note ? "" : "empty"}" data-day="${day}">
+        ${note ? `📝 ${note}` : "＋ notitie toevoegen"}
+      </div>`;
+      noteRow.querySelector(".planner-note").addEventListener("click", () => this._editNote(day, plan, note));
+      grid.appendChild(noteRow);
     });
+  }
+
+  _editNote(day, plan, currentNote) {
+    const val = prompt("Notitie voor deze dag:", currentNote || "");
+    if (val === null) return; // cancelled
+    const newPlan = JSON.parse(JSON.stringify(plan));
+    if (!newPlan.days[day]) newPlan.days[day] = { dinner: null, servings: 4 };
+    newPlan.days[day].note = val.trim();
+    this._savePlanning(this._currentWeek, newPlan);
   }
 
   // ─── RENDER RECIPES ────────────────────────────────────────────
@@ -1094,6 +1218,12 @@ class MealPlannerCard extends HTMLElement {
       r.tags?.some(t => t.includes(this._recipeFilter))
     );
     if (this._recipeCategoryFilter) recipes = recipes.filter(r => r.category === this._recipeCategoryFilter);
+    if (this._favFilter) recipes = recipes.filter(r => r.favourite);
+    // Sort: favourites first, then by rating desc
+    recipes = [...recipes].sort((a, b) => {
+      if (b.favourite !== a.favourite) return (b.favourite ? 1 : 0) - (a.favourite ? 1 : 0);
+      return (b.rating || 0) - (a.rating || 0);
+    });
 
     if (!recipes.length) {
       grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📖</div><p>Geen recepten gevonden.<br>Klik op + Recept om te beginnen.</p></div>`;
@@ -1118,16 +1248,24 @@ class MealPlannerCard extends HTMLElement {
             <span class="badge ${diffBadge}">${DIFFICULTIES[recipe.difficulty] || "Gemiddeld"}</span>
           </div>
           ${recipe.tags?.length ? `<div style="margin-top:5px;display:flex;gap:3px;flex-wrap:wrap">${recipe.tags.slice(0,3).map(t=>`<span class="recipe-tag">${t}</span>`).join("")}</div>` : ""}
-          <div class="recipe-actions-row">
-            <button class="btn btn-secondary btn-sm edit-btn">✏️</button>
+          <div class="recipe-actions-row" style="justify-content:space-between;align-items:center;">
+            <div class="star-display">${"⭐".repeat(recipe.rating||0)}${"☆".repeat(5-(recipe.rating||0))}</div>
+            <div style="display:flex;gap:4px;">
+              <button class="fav-btn ${recipe.favourite ? "active" : ""}" title="Favoriet">❤️</button>
+              <button class="btn btn-secondary btn-sm edit-btn">✏️</button>
+            </div>
           </div>
         </div>`;
       card.addEventListener("click", e => {
-        if (!e.target.closest(".edit-btn")) this._openDetailModal(recipe);
+        if (!e.target.closest(".edit-btn") && !e.target.closest(".fav-btn")) this._openDetailModal(recipe);
       });
       card.querySelector(".edit-btn").addEventListener("click", e => {
         e.stopPropagation();
         this._openRecipeModal(recipe);
+      });
+      card.querySelector(".fav-btn").addEventListener("click", e => {
+        e.stopPropagation();
+        this._toggleFavourite(recipe);
       });
       grid.appendChild(card);
     });
