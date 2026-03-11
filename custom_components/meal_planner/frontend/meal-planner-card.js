@@ -3,21 +3,117 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.3.8";
+const MP_VERSION = "1.5.0";
+
+
+const DEFAULT_LABELS = {
+  // Tabs
+  tab_planner:        this._l("tab_planner"),
+  tab_recipes:        this._l("tab_recipes"),
+  tab_shopping:       this._l("tab_shopping"),
+
+  // Planner
+  planner_tonight:    this._l("planner_tonight"),
+  planner_empty:      "+ Kies maaltijd",
+  planner_note_empty: this._l("planner_note_empty"),
+  planner_copy:       this._l("planner_copy"),
+  planner_random:     this._l("planner_random"),
+
+  // Recipes
+  recipes_search:     "Zoek recept...",
+  recipes_add:        "${this._l("recipes_add")}",
+  recipes_import:     "📥 Importeren",
+  recipes_all_cats:   "${this._l("recipes_all_cats")}",
+  recipes_empty:      this._l("recipes_empty"),
+  recipes_empty_sub:  "Klik op ${this._l("recipes_empty_sub")}",
+
+  // Recipe modal
+  recipe_modal_add:   this._l("recipe_modal_add"),
+  recipe_modal_edit:  this._l("recipe_modal_edit"),
+  recipe_name:        "${this._l("recipe_name")}",
+  recipe_category:    "Categorie",
+  recipe_description: "Beschrijving",
+  recipe_desc_ph:     "${this._l("recipe_desc_ph")}",
+  recipe_servings:    "Personen",
+  recipe_prep:        "Bereidingstijd (min)",
+  recipe_cook:        "Kooktijd (min)",
+  recipe_difficulty:  "Moeilijkheid",
+  recipe_source:      "Bron URL",
+  recipe_rating:      "Beoordeling",
+  recipe_favourite:   "${this._l("recipe_favourite")}",
+  recipe_tags:        "Tags",
+  recipe_tags_ph:     "${this._l("recipe_tags_ph")}",
+  recipe_photo:       "Foto",
+  recipe_photo_ph:    "📸 Klik of sleep een foto",
+  recipe_ingredients: "Ingrediënten",
+  recipe_ing_name:    "Naam",
+  recipe_ing_amount:  "Hoeveelheid",
+  recipe_ing_unit:    "Eenheid",
+  recipe_ing_cat:     "Winkelcategorie",
+  recipe_add_ing:     "${this._l("recipe_add_ing")}",
+  recipe_steps:       "Bereiding",
+  recipe_add_step:    "${this._l("recipe_add_step")}",
+
+  // Import modal
+  import_title:       this._l("import_title"),
+  import_intro:       "${this._l("import_intro")}",
+  import_url_label:   "URL",
+  import_fetch:       this._l("import_fetch"),
+
+  // Shopping
+  shop_subtab_week:   this._l("shop_subtab_week"),
+  shop_subtab_fixed:  this._l("shop_subtab_fixed"),
+  shop_generate:      this._l("shop_generate"),
+  shop_empty:         "Nog geen boodschappenlijst.",
+  shop_empty_sub:     "Klik op 'Genereer' om te starten.",
+  shop_extra_add:     this._l("shop_extra_add"),
+  shop_fixed_add:     this._l("shop_fixed_add"),
+  shop_fixed_to_week: this._l("shop_fixed_to_week"),
+  shop_fixed_empty:   "Nog geen vaste producten.",
+  shop_fixed_empty_sub:"Voeg producten toe die je altijd nodig hebt.",
+
+  // Pick modal
+  pick_title:         this._l("pick_title"),
+  pick_search:        "Zoek recept...",
+
+  // Extra / fixed modal
+  extra_name:         "Naam",
+  extra_amount:       "Hoeveelheid",
+  extra_unit:         "Eenheid",
+  extra_category:     "Categorie",
+
+  // General buttons
+  btn_save:           this._l("btn_save"),
+  btn_cancel:         this._l("btn_cancel"),
+  btn_delete:         this._l("btn_delete"),
+
+  // Difficulties
+  diff_easy:          "Makkelijk",
+  diff_medium:        "Gemiddeld",
+  diff_hard:          "Moeilijk",
+
+  // Days
+  days_short:         ["Ma","Di","Wo","Do","Vr","Za","Zo"],
+  days_full:          ["Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag","Zondag"],
+
+  // Categories
+  categories:         ["ontbijt","lunch","avondeten","snack","dessert","soep","salade"],
+  shop_categories:    [
+    "groenten & fruit","vlees & vis","zuivel & eieren","brood & bakkerij",
+    "pasta & rijst","conserven & sauzen","diepvries","dranken","snoep & koek","overige"
+  ],
+};
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
-const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
-const DAYS_FULL = ["Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag","Zondag"];
+// DAYS_LABEL now from this._labels.days_short
+// DAYS_FULL now from this._labels.days_full
 const MEAL_TYPES = ["breakfast","lunch","dinner"];
 const MEAL_LABELS = { breakfast: "🌅 Ontbijt", lunch: "☀️ Lunch", dinner: "🌙 Avondeten" };
 // Only dinner shown in planner
 const PLANNER_MEAL = "dinner";
-const DIFFICULTIES = { easy: "Makkelijk", medium: "Gemiddeld", hard: "Moeilijk" };
-const CATEGORIES = ["ontbijt","lunch","avondeten","snack","dessert","soep","salade"];
-const SHOP_CATEGORIES = [
-  "groenten & fruit","vlees & vis","zuivel & eieren","brood & bakkerij",
-  "pasta & rijst","conserven & sauzen","diepvries","dranken","snoep & koek","overige"
-];
+// DIFFICULTIES now from this._labels.diff_*
+// CATEGORIES now from this._labels.categories
+// SHOP_CATEGORIES now from this._labels.shop_categories
 
 function getWeekKey(date = new Date()) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -192,18 +288,22 @@ const STYLES = `
   .btn-sm { padding:5px 10px; font-size:.78em; }
 
   /* Ingredients editor */
-  .ing-row { display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--divider-color,#f0f0f0); cursor:default; }
-  .ing-row.drag-over { border-top:2px solid var(--primary-color); padding-top:6px; }
-  .ing-name { flex:1 1 120px; min-width:100px; }
-  .ing-amount { width:60px; flex-shrink:0; }
-  .ing-unit { width:70px; flex-shrink:0; }
-  .ing-shopcat { flex:1 1 100px; min-width:90px; }
-  .ing-row button { flex-shrink:0; }
-  .drag-handle { cursor:grab; color:var(--secondary-text-color); opacity:.4; font-size:16px; user-select:none; flex-shrink:0; }
+  .ing-row { display:grid; grid-template-columns:16px 1fr auto; gap:4px 6px; align-items:center; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid var(--divider-color,#f0f0f0); }
+  .ing-row.drag-over { border-top:2px solid var(--primary-color); }
+  .ing-name { grid-column:2; grid-row:1; }
+  .ing-row-sub { grid-column:2; grid-row:2; display:flex; gap:5px; }
+  .ing-amount { width:58px; flex-shrink:0; }
+  .ing-unit { width:65px; flex-shrink:0; }
+  .ing-row > button { grid-column:3; grid-row:1; align-self:center; }
+  .drag-handle { grid-column:1; grid-row:1 / 3; cursor:grab; color:var(--secondary-text-color); opacity:.4; font-size:15px; user-select:none; align-self:center; }
   .drag-handle:active { cursor:grabbing; }
-  .ing-row input,.ing-row select { padding:5px 7px; border:1px solid var(--divider-color,#ddd); border-radius:4px; font-size:.82em; background:var(--input-fill-color,#f5f5f5); color:var(--primary-text-color); box-sizing:border-box; font-family:inherit; width:100%; }
+  .ing-row input,.ing-row select { padding:5px 7px; border:1px solid var(--divider-color,#ddd); border-radius:4px; font-size:.82em; background:var(--input-fill-color,#f5f5f5); color:var(--primary-text-color); box-sizing:border-box; font-family:inherit; }
+  .ing-name { width:100%; }
+  .ing-amount { width:58px !important; }
+  .ing-unit { width:65px !important; }
+  .ing-shopcat { flex:1; min-width:80px; }
   .ing-row button { background:none; border:none; cursor:pointer; color:#e53935; font-size:15px; padding:0; line-height:1; }
-  .ing-header { display:grid; grid-template-columns:1fr 70px 90px 110px 22px; gap:5px; font-size:.72em; color:var(--secondary-text-color); font-weight:600; margin-bottom:4px; }
+  .ing-header { display:none; }
 
   /* Steps editor */
   .step-row { display:flex; gap:6px; align-items:flex-start; margin-bottom:6px; }
@@ -278,7 +378,19 @@ class MealPlannerCard extends HTMLElement {
     }
   }
 
-  setConfig(config) { this._config = config || {}; }
+  setConfig(config) {
+    this._config = config || {};
+    // Merge user labels with defaults (deep merge for arrays)
+    const userLabels = config?.labels || {};
+    this._labels = { ...DEFAULT_LABELS, ...userLabels };
+    // Merge nested arrays only if user provided them
+    if (!userLabels.days_short)     this._labels.days_short     = DEFAULT_LABELS.days_short;
+    if (!userLabels.days_full)      this._labels.days_full       = DEFAULT_LABELS.days_full;
+    if (!userLabels.categories)     this._labels.categories      = DEFAULT_LABELS.categories;
+    if (!userLabels.shop_categories)this._labels.shop_categories = DEFAULT_LABELS.shop_categories;
+  }
+
+  _l(key) { return this._labels?.[key] ?? DEFAULT_LABELS[key] ?? key; }
   getCardSize() { return 6; }
   static getStubConfig() { return {}; }
 
@@ -378,9 +490,9 @@ class MealPlannerCard extends HTMLElement {
       <style>${STYLES}</style>
       <ha-card>
         <div class="tabs">
-          <button class="tab active" data-tab="planner">📅 Weekplanner</button>
-          <button class="tab" data-tab="recipes">📖 Recepten</button>
-          <button class="tab" data-tab="shopping">🛒 Boodschappen</button>
+          <button class="tab active" data-tab="planner">📅 ${this._l("tab_planner")}</button>
+          <button class="tab" data-tab="recipes">📖 ${this._l("tab_recipes")}</button>
+          <button class="tab" data-tab="shopping">🛒 ${this._l("tab_shopping")}</button>
         </div>
 
         <div class="tab-content active" id="tab-planner">
@@ -392,21 +504,21 @@ class MealPlannerCard extends HTMLElement {
           </div>
           <div class="week-grid" id="week-grid"></div>
           <div class="week-actions">
-            <button class="btn btn-action-copy" id="copy-prev-week">📋 Kopieer vorige week</button>
-            <button class="btn btn-action-random" id="random-dinners">🎲 Willekeurige avondmaaltijden</button>
+            <button class="btn btn-action-copy" id="copy-prev-week">${this._l("planner_copy")}</button>
+            <button class="btn btn-action-random" id="random-dinners">${this._l("planner_random")}</button>
           </div>
         </div>
 
         <div class="tab-content" id="tab-recipes">
           <div class="recipe-toolbar">
-            <input class="search-input" id="recipe-search" placeholder="🔍 Zoek recepten..." />
+            <input class="search-input" id="recipe-search" placeholder="${this._l("recipes_search")}" />
             <select class="filter-select" id="recipe-cat-filter">
-              <option value="">Alle categorieën</option>
-              ${CATEGORIES.map(c => `<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join("")}
+              <option value="">${this._l("recipes_all_cats")}</option>
+              ${this._labels.categories.map(c => `<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join("")}
             </select>
             <button class="btn btn-secondary btn-sm" id="fav-filter-btn" title="Toon favorieten">⭐</button>
-            <button class="btn btn-primary btn-sm" id="add-recipe-btn">+ Recept</button>
-            <button class="btn btn-action-copy" id="import-recipe-btn">📥 Importeer URL</button>
+            <button class="btn btn-primary btn-sm" id="add-recipe-btn">${this._l("recipes_add")}</button>
+            <button class="btn btn-action-copy" id="import-recipe-btn">${this._l("recipes_import")}</button>
           </div>
           <div class="recipes-grid" id="recipes-grid"></div>
         </div>
@@ -414,8 +526,8 @@ class MealPlannerCard extends HTMLElement {
         <div class="tab-content" id="tab-shopping">
           <!-- Sub-tabs -->
           <div class="sub-tabs">
-            <button class="sub-tab active" id="subtab-week-btn">📋 Weeklijst</button>
-            <button class="sub-tab" id="subtab-fixed-btn">📌 Vaste producten</button>
+            <button class="sub-tab active" id="subtab-week-btn">📋 ${this._l("shop_subtab_week")}</button>
+            <button class="sub-tab" id="subtab-fixed-btn">📌 ${this._l("shop_subtab_fixed")}</button>
           </div>
 
           <!-- Week shopping list -->
@@ -424,12 +536,12 @@ class MealPlannerCard extends HTMLElement {
               <button class="btn btn-secondary btn-sm" id="shop-prev-week">◀</button>
               <span class="shop-week-label" id="shop-week-label"></span>
               <button class="btn btn-secondary btn-sm" id="shop-next-week">▶</button>
-              <button class="btn btn-primary btn-sm" id="generate-shopping">🔄 Genereer</button>
+              <button class="btn btn-primary btn-sm" id="generate-shopping">${this._l("shop_generate")}</button>
             </div>
             <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
             <div id="shopping-list"></div>
             <div style="margin-top:12px;">
-              <button class="btn btn-secondary btn-sm" id="add-extra-btn" style="width:100%">+ Extra item toevoegen</button>
+              <button class="btn btn-secondary btn-sm" id="add-extra-btn" style="width:100%">${this._l("shop_extra_add")}</button>
             </div>
           </div>
 
@@ -440,8 +552,8 @@ class MealPlannerCard extends HTMLElement {
             </p>
             <div id="fixed-products-list"></div>
             <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <button class="btn btn-secondary btn-sm" id="add-fixed-btn">+ Nieuw product</button>
-              <button class="btn btn-primary btn-sm" id="fixed-add-to-week" style="flex:1">✅ Toevoegen aan weeklijst</button>
+              <button class="btn btn-secondary btn-sm" id="add-fixed-btn">${this._l("shop_fixed_add")}</button>
+              <button class="btn btn-primary btn-sm" id="fixed-add-to-week" style="flex:1">${this._l("shop_fixed_to_week")}</button>
             </div>
           </div>
         </div>
@@ -450,9 +562,9 @@ class MealPlannerCard extends HTMLElement {
       <!-- Extra Item Modal -->
       <div class="modal-overlay" id="extra-modal">
         <div class="modal" style="max-width:380px;">
-          <h3 id="extra-modal-title">Extra item toevoegen</h3>
+          <h3 id="extra-modal-title">${this._l("shop_extra_add")}</h3>
           <div class="form-group">
-            <label>Naam *</label>
+            <label>${this._l("recipe_name")}</label>
             <input type="text" id="ei-name" placeholder="vb. Melk, Zeep, ..." />
           </div>
           <div class="form-row">
@@ -468,13 +580,13 @@ class MealPlannerCard extends HTMLElement {
           <div class="form-group">
             <label>Winkelcategorie</label>
             <select id="ei-category">
-              ${SHOP_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("")}
+              ${this._labels.shop_categories.map(c => `<option value="${c}">${c}</option>`).join("")}
             </select>
           </div>
           <div class="modal-actions">
-            <button class="btn btn-secondary" id="ei-cancel">Annuleren</button>
-            <button class="btn btn-danger btn-sm" id="ei-delete" style="display:none">Verwijderen</button>
-            <button class="btn btn-primary" id="ei-save">Opslaan</button>
+            <button class="btn btn-secondary" id="ei-cancel">${this._l("btn_cancel")}</button>
+            <button class="btn btn-danger btn-sm" id="ei-delete" style="display:none">${this._l("btn_delete")}</button>
+            <button class="btn btn-primary" id="ei-save">${this._l("btn_save")}</button>
           </div>
         </div>
       </div>
@@ -482,11 +594,11 @@ class MealPlannerCard extends HTMLElement {
       <!-- Pick Meal Modal -->
       <div class="modal-overlay" id="pick-modal">
         <div class="modal">
-          <h3 id="pick-modal-title">Kies een recept</h3>
-          <input class="pick-search" id="pick-search" placeholder="🔍 Zoeken..." />
+          <h3 id="pick-modal-title">${this._l("pick_title")}</h3>
+          <input class="pick-search" id="pick-search" placeholder="${this._l("pick_search")}" />
           <div class="pick-list" id="pick-list"></div>
           <div class="modal-actions">
-            <button class="btn btn-secondary" id="pick-cancel">Annuleren</button>
+            <button class="btn btn-secondary" id="pick-cancel">${this._l("btn_cancel")}</button>
           </div>
         </div>
       </div>
@@ -495,9 +607,9 @@ class MealPlannerCard extends HTMLElement {
       <!-- URL Import Modal -->
       <div class="modal-overlay" id="import-modal">
         <div class="modal" style="max-width:420px;">
-          <h3>📥 Recept importeren</h3>
+          <h3>📥 ${this._l("import_title")}</h3>
           <p style="font-size:.85em;color:var(--secondary-text-color);margin:0 0 14px">
-            Plak een link van Dagelijkse Kost, Njam, of een andere receptensite.
+            ${this._l("import_intro")}
           </p>
           <div class="form-group">
             <label>URL</label>
@@ -505,62 +617,62 @@ class MealPlannerCard extends HTMLElement {
           </div>
           <div id="import-status" style="font-size:.83em;margin:8px 0;min-height:20px;"></div>
           <div class="modal-actions">
-            <button class="btn btn-secondary" id="import-cancel">Annuleren</button>
-            <button class="btn btn-primary" id="import-fetch-btn">🔍 Ophalen</button>
+            <button class="btn btn-secondary" id="import-cancel">${this._l("btn_cancel")}</button>
+            <button class="btn btn-primary" id="import-fetch-btn">${this._l("import_fetch")}</button>
           </div>
         </div>
       </div>
 
       <div class="modal-overlay" id="recipe-modal">
         <div class="modal">
-          <h3 id="recipe-modal-title">Nieuw Recept</h3>
+          <h3 id="recipe-modal-title">${this._l("recipe_modal_add")}</h3>
           <div class="form-row">
             <div class="form-group">
-              <label>Naam *</label>
-              <input type="text" id="rm-name" placeholder="Naam van het recept" />
+              <label>${this._l("recipe_name")}</label>
+              <input type="text" id="rm-name" placeholder="${this._l("recipe_name")}" />
             </div>
             <div class="form-group">
-              <label>Categorie</label>
+              <label>${this._l("recipe_category")}</label>
               <select id="rm-category">
-                ${CATEGORIES.map(c => `<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join("")}
+                ${this._labels.categories.map(c => `<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join("")}
               </select>
             </div>
           </div>
           <div class="form-group">
-            <label>Beschrijving</label>
-            <textarea id="rm-description" placeholder="Korte beschrijving..."></textarea>
+            <label>${this._l("recipe_description")}</label>
+            <textarea id="rm-description" placeholder="${this._l("recipe_desc_ph")}"></textarea>
           </div>
           <div class="form-row-3">
             <div class="form-group">
-              <label>Personen</label>
+              <label>${this._l("recipe_servings")}</label>
               <input type="number" id="rm-servings" value="4" min="1" max="20" />
             </div>
             <div class="form-group">
-              <label>Bereidingstijd (min)</label>
+              <label>${this._l("recipe_prep")}</label>
               <input type="number" id="rm-prep" value="15" min="0" />
             </div>
             <div class="form-group">
-              <label>Kooktijd (min)</label>
+              <label>${this._l("recipe_cook")}</label>
               <input type="number" id="rm-cook" value="30" min="0" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Moeilijkheid</label>
+              <label>${this._l("recipe_difficulty")}</label>
               <select id="rm-difficulty">
-                <option value="easy">Makkelijk</option>
-                <option value="medium" selected>Gemiddeld</option>
-                <option value="hard">Moeilijk</option>
+                <option value="easy">${this._l("diff_easy")}</option>
+                <option value="medium" selected>${this._l("diff_medium")}</option>
+                <option value="hard">${this._l("diff_hard")}</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Bron URL</label>
+              <label>${this._l("recipe_source")}</label>
               <input type="url" id="rm-source" placeholder="https://..." />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Beoordeling</label>
+              <label>${this._l("recipe_rating")}</label>
               <div class="star-rating" id="rm-star-rating">
                 <span class="star" data-val="1">⭐</span>
                 <span class="star" data-val="2">⭐</span>
@@ -571,37 +683,37 @@ class MealPlannerCard extends HTMLElement {
             </div>
             <div class="form-group" style="display:flex;align-items:center;gap:8px;padding-top:22px;">
               <input type="checkbox" id="rm-favourite" style="width:18px;height:18px;accent-color:var(--primary-color);" />
-              <label for="rm-favourite" style="margin:0;font-size:.88em;cursor:pointer;">❤️ Favoriet</label>
+              <label for="rm-favourite" style="margin:0;font-size:.88em;cursor:pointer;">${this._l("recipe_favourite")}</label>
             </div>
           </div>
           <div class="form-group">
-            <label>Tags</label>
+            <label>${this._l("recipe_tags")}</label>
             <div class="tags-wrap" id="rm-tags-wrap">
-              <input type="text" id="rm-tag-input" placeholder="Tag toevoegen + Enter..." />
+              <input type="text" id="rm-tag-input" placeholder="${this._l("recipe_tags_ph")}" />
             </div>
           </div>
           <div class="form-group">
-            <label>Foto</label>
-            <div class="img-upload" id="rm-img-upload">📷 Klik of sleep een foto
+            <label>${this._l("recipe_photo")}</label>
+            <div class="img-upload" id="rm-img-upload">${this._l("recipe_photo_ph")}
               <input type="file" id="rm-img-file" accept="image/*" style="display:none" />
             </div>
             <img id="rm-img-preview" class="img-preview" style="display:none" />
           </div>
           <div class="form-group">
-            <label>Ingrediënten</label>
+            <label>${this._l("recipe_ingredients")}</label>
             <div class="ing-header"><span>Naam</span><span>Hoeveelheid</span><span>Eenheid</span><span>Winkelcategorie</span><span></span></div>
             <div id="rm-ingredients"></div>
-            <button class="btn btn-secondary btn-sm" id="rm-add-ing" style="margin-top:5px">+ Ingrediënt</button>
+            <button class="btn btn-secondary btn-sm" id="rm-add-ing" style="margin-top:5px">${this._l("recipe_add_ing")}</button>
           </div>
           <div class="form-group">
-            <label>Bereiding</label>
+            <label>${this._l("recipe_steps")}</label>
             <div id="rm-steps"></div>
-            <button class="btn btn-secondary btn-sm" id="rm-add-step" style="margin-top:5px">+ Stap</button>
+            <button class="btn btn-secondary btn-sm" id="rm-add-step" style="margin-top:5px">${this._l("recipe_add_step")}</button>
           </div>
           <div class="modal-actions">
-            <button class="btn btn-secondary" id="rm-cancel">Annuleren</button>
-            <button class="btn btn-danger btn-sm" id="rm-delete" style="display:none">Verwijderen</button>
-            <button class="btn btn-primary" id="rm-save">Opslaan</button>
+            <button class="btn btn-secondary" id="rm-cancel">${this._l("btn_cancel")}</button>
+            <button class="btn btn-danger btn-sm" id="rm-delete" style="display:none">${this._l("btn_delete")}</button>
+            <button class="btn btn-primary" id="rm-save">${this._l("btn_save")}</button>
           </div>
         </div>
       </div>
@@ -800,13 +912,15 @@ class MealPlannerCard extends HTMLElement {
     row.draggable = true;
     row.innerHTML = `
       <span class="drag-handle" title="Versleep om te herordenen">⠿</span>
-      <input type="text" placeholder="Naam" value="${ing.name || ""}" class="ing-name" />
-      <input type="number" placeholder="0" value="${ing.amount || ""}" class="ing-amount" min="0" step="0.1" />
-      <input type="text" placeholder="g / stuk / ml" value="${ing.unit || ""}" class="ing-unit" />
-      <select class="ing-shopcat">
-        ${SHOP_CATEGORIES.map(c => `<option value="${c}" ${ing.shop_category === c ? "selected" : ""}>${c}</option>`).join("")}
-      </select>
-      <button type="button">🗑</button>
+      <input type="text" placeholder="${this._l('recipe_ing_name')}" value="${ing.name || ""}" class="ing-name" />
+      <button type="button" style="background:none;border:none;cursor:pointer;color:#e53935;font-size:15px;padding:0;line-height:1;">🗑</button>
+      <div class="ing-row-sub">
+        <input type="number" placeholder="0" value="${ing.amount || ""}" class="ing-amount" min="0" step="0.1" />
+        <input type="text" placeholder="${this._l('recipe_ing_unit')}" value="${ing.unit || ""}" class="ing-unit" />
+        <select class="ing-shopcat">
+          ${SHOP_this._labels.categories.map(c => `<option value="${c}" ${ing.shop_category === c ? "selected" : ""}>${c}</option>`).join("")}
+        </select>
+      </div>
     `;
     row.querySelector("button").addEventListener("click", () => row.remove());
 
@@ -909,7 +1023,7 @@ class MealPlannerCard extends HTMLElement {
   _openRecipeModal(recipe = null) {
     const r = this.shadowRoot;
     this._editingRecipe = recipe;
-    r.getElementById("recipe-modal-title").textContent = recipe ? "Recept bewerken" : "Nieuw Recept";
+    r.getElementById("recipe-modal-title").textContent = recipe ? this._l("recipe_modal_edit") : "${this._l("recipe_modal_add")}";
     r.getElementById("rm-name").value = recipe?.name || "";
     r.getElementById("rm-description").value = recipe?.description || "";
     r.getElementById("rm-category").value = recipe?.category || "avondeten";
@@ -972,7 +1086,7 @@ class MealPlannerCard extends HTMLElement {
   _openExtraModal(item = null) {
     const r = this.shadowRoot;
     this._editingExtraItem = item;
-    r.getElementById("extra-modal-title").textContent = item ? "Item bewerken" : "Extra item toevoegen";
+    r.getElementById("extra-modal-title").textContent = item ? "Item bewerken" : "${this._l("shop_extra_add")}";
     r.getElementById("ei-name").value = item?.name || "";
     r.getElementById("ei-amount").value = item?.amount || "";
     r.getElementById("ei-unit").value = item?.unit || "";
@@ -1061,7 +1175,7 @@ class MealPlannerCard extends HTMLElement {
     const container = this.shadowRoot.getElementById("fixed-products-list");
     if (!container) return;
     if (!this._fixedProducts.length) {
-      container.innerHTML = `<div style="text-align:center;padding:24px 12px;color:var(--secondary-text-color);font-size:.85em;">Nog geen vaste producten.<br>Klik op <strong>+ Nieuw product</strong> om te beginnen.</div>`;
+      container.innerHTML = `<div style="text-align:center;padding:24px 12px;color:var(--secondary-text-color);font-size:.85em;">Nog geen vaste producten.<br>Klik op <strong>${this._l("shop_fixed_add")}</strong> om te beginnen.</div>`;
       return;
     }
     container.innerHTML = "";
@@ -1085,7 +1199,7 @@ class MealPlannerCard extends HTMLElement {
           <span class="item-name" style="flex:1">${item.name}</span>
           ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}
           <button class="edit-fixed-btn" title="Bewerken" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:var(--primary-text-color);">✏️</button>
-          <button class="del-fixed-btn" title="Verwijderen" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:#e53935;">🗑️</button>`;
+          <button class="del-fixed-btn" title=this._l("btn_delete") style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:#e53935;">🗑️</button>`;
         const cb = row.querySelector("input");
         cb.addEventListener("change", e => {
           if (!this._fixedChecked) this._fixedChecked = new Set();
@@ -1199,7 +1313,7 @@ class MealPlannerCard extends HTMLElement {
       // Day label
       const dayLabel = document.createElement("div");
       dayLabel.className = "planner-day-label";
-      dayLabel.innerHTML = `<span class="planner-day-name">${DAYS_FULL[di]}</span><span class="planner-day-date">${dates[di].getDate()}/${dates[di].getMonth()+1}</span>`;
+      dayLabel.innerHTML = `<span class="planner-day-name">${this._labels.days_full[di]}</span><span class="planner-day-date">${dates[di].getDate()}/${dates[di].getMonth()+1}</span>`;
       row.appendChild(dayLabel);
 
       // Meal slot
@@ -1231,7 +1345,7 @@ class MealPlannerCard extends HTMLElement {
         slot.querySelector(".servings-inline").addEventListener("click", e => e.stopPropagation());
         slot.addEventListener("click", () => this._openDetailModal(recipe));
       } else {
-        slot.innerHTML = `<div class="planner-meal-empty">+ Kies maaltijd</div>`;
+        slot.innerHTML = `<div class="planner-meal-empty">${this._l("planner_empty")}</div>`;
         slot.addEventListener("click", () => this._openPickModal(day, "dinner"));
       }
       row.appendChild(slot);
@@ -1248,7 +1362,7 @@ class MealPlannerCard extends HTMLElement {
       const noteRow = document.createElement("div");
       noteRow.style.cssText = "margin:-4px 0 4px;";
       noteRow.innerHTML = `<div class="planner-note ${note ? "" : "empty"}" data-day="${day}">
-        ${note ? `📝 ${note}` : "＋ notitie toevoegen"}
+        ${note ? `📝 ${note}` : this._l("planner_note_empty")}
       </div>`;
       noteRow.querySelector(".planner-note").addEventListener("click", () => this._editNote(day, plan, note));
       grid.appendChild(noteRow);
@@ -1283,7 +1397,7 @@ class MealPlannerCard extends HTMLElement {
     });
 
     if (!recipes.length) {
-      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📖</div><p>Geen recepten gevonden.<br>Klik op + Recept om te beginnen.</p></div>`;
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📖</div><p>Geen recepten gevonden.<br>Klik op ${this._l("recipes_empty_sub")}</p></div>`;
       return;
     }
     grid.innerHTML = "";
@@ -1302,7 +1416,7 @@ class MealPlannerCard extends HTMLElement {
           <div class="recipe-meta">
             ${total ? `<span>⏱ ${total}m</span>` : ""}
             <span>👤 ${recipe.servings || 4}</span>
-            <span class="badge ${diffBadge}">${DIFFICULTIES[recipe.difficulty] || "Gemiddeld"}</span>
+            <span class="badge ${diffBadge}">${(this._labels["diff_" + recipe.difficulty] || this._l("diff_medium")) || "Gemiddeld"}</span>
           </div>
           ${recipe.tags?.length ? `<div style="margin-top:5px;display:flex;gap:3px;flex-wrap:wrap">${recipe.tags.slice(0,3).map(t=>`<span class="recipe-tag">${t}</span>`).join("")}</div>` : ""}
           <div class="recipe-actions-row" style="justify-content:space-between;align-items:center;">
@@ -1347,7 +1461,7 @@ class MealPlannerCard extends HTMLElement {
     const allItems = [...(shopping.items || []), ...(shopping.extra_items || [])];
 
     if (!allItems.length) {
-      container.innerHTML = `<div class="empty-state"><div class="icon">🛒</div><p>Nog geen boodschappenlijst.<br>Klik op 🔄 Genereer om te starten.</p></div>`;
+      container.innerHTML = `<div class="empty-state"><div class="icon">🛒</div><p>Nog geen boodschappenlijst.<br>Klik op ${this._l("shop_generate")} om te starten.</p></div>`;
       const fill = this.shadowRoot.getElementById("progress-fill");
       if (fill) fill.style.width = "0%";
       return;
@@ -1388,7 +1502,7 @@ class MealPlannerCard extends HTMLElement {
           <input type="checkbox" ${item.checked ? "checked" : ""} />
           <span class="item-name">${item.name}</span>
           ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}
-          ${isExtra ? `<button class="edit-extra-btn" title="Bewerken" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:var(--primary-text-color);flex-shrink:0;">✏️</button><button class="del-extra-btn" title="Verwijderen" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:#e53935;flex-shrink:0;">🗑️</button>` : ""}`;
+          ${isExtra ? `<button class="edit-extra-btn" title="Bewerken" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:var(--primary-text-color);flex-shrink:0;">✏️</button><button class="del-extra-btn" title=this._l("btn_delete") style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:#e53935;flex-shrink:0;">🗑️</button>` : ""}`;
         row.querySelector("input").addEventListener("change", e => {
           const newChecked = e.target.checked;
           const newShopping = JSON.parse(JSON.stringify(shopping));
@@ -1419,7 +1533,7 @@ class MealPlannerCard extends HTMLElement {
   _openPickModal(day, mealType) {
     this._pickContext = { day, mealType };
     const r = this.shadowRoot;
-    r.getElementById("pick-modal-title").textContent = `${DAYS_FULL[DAYS_NL.indexOf(day)]} — ${MEAL_LABELS[mealType]}`;
+    r.getElementById("pick-modal-title").textContent = `${this._labels.days_full[DAYS_NL.indexOf(day)]} — ${this._l("pick_title")}`;
     r.getElementById("pick-search").value = "";
     this._renderPickList("");
     r.getElementById("pick-modal").classList.add("open");
@@ -1481,7 +1595,7 @@ class MealPlannerCard extends HTMLElement {
         ${recipe.prep_time ? `<span>🔪 Bereiding: ${recipe.prep_time}m</span>` : ""}
         ${recipe.cook_time ? `<span>🍳 Kooktijd: ${recipe.cook_time}m</span>` : ""}
         <span>👤 ${recipe.servings || 4} personen</span>
-        <span class="badge ${diffBadge}">${DIFFICULTIES[recipe.difficulty] || "Gemiddeld"}</span>
+        <span class="badge ${diffBadge}">${(this._labels["diff_" + recipe.difficulty] || this._l("diff_medium")) || "Gemiddeld"}</span>
         ${recipe.category ? `<span>📁 ${recipe.category}</span>` : ""}
       </div>
       ${recipe.tags?.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">${recipe.tags.map(t=>`<span class="recipe-tag">${t}</span>`).join("")}</div>` : ""}
