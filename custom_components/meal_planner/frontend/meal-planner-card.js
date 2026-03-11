@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.1.2";
+const MP_VERSION = "1.1.3";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -409,12 +409,13 @@ class MealPlannerCard extends HTMLElement {
 
           <!-- Fixed products -->
           <div id="subtab-fixed" style="display:none">
-            <p style="font-size:.85em;color:var(--secondary-text-color);margin:0 0 12px">
-              Vaste producten worden automatisch toegevoegd bij elke boodschappenlijst generatie.
+            <p style="font-size:.85em;color:var(--secondary-text-color);margin:0 0 10px">
+              Vink de producten aan die je wil toevoegen aan de weeklijst, en klik op <strong>Toevoegen</strong>.
             </p>
             <div id="fixed-products-list"></div>
-            <div style="margin-top:12px;">
-              <button class="btn btn-secondary btn-sm" id="add-fixed-btn" style="width:100%">+ Vast product toevoegen</button>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button class="btn btn-secondary btn-sm" id="add-fixed-btn">+ Nieuw product</button>
+              <button class="btn btn-primary btn-sm" id="fixed-add-to-week" style="flex:1">✅ Toevoegen aan weeklijst</button>
             </div>
           </div>
         </div>
@@ -632,6 +633,7 @@ class MealPlannerCard extends HTMLElement {
       this._renderFixedProducts();
     });
     r.getElementById("add-fixed-btn").addEventListener("click", () => this._openFixedProductModal(null));
+    r.getElementById("fixed-add-to-week").addEventListener("click", () => this._addFixedToWeek());
 
     // Extra item modal
     r.getElementById("add-extra-btn").addEventListener("click", () => this._openExtraModal());
@@ -903,11 +905,10 @@ class MealPlannerCard extends HTMLElement {
     const container = this.shadowRoot.getElementById("fixed-products-list");
     if (!container) return;
     if (!this._fixedProducts.length) {
-      container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--secondary-text-color);font-size:.85em;">Nog geen vaste producten.<br>Voeg brood, melk, beleg, ... toe.</div>`;
+      container.innerHTML = `<div style="text-align:center;padding:24px 12px;color:var(--secondary-text-color);font-size:.85em;">Nog geen vaste producten.<br>Klik op <strong>+ Nieuw product</strong> om te beginnen.</div>`;
       return;
     }
     container.innerHTML = "";
-    // Group by category
     const grouped = {};
     this._fixedProducts.forEach(p => {
       const cat = p.shop_category || "overige";
@@ -922,15 +923,56 @@ class MealPlannerCard extends HTMLElement {
         const row = document.createElement("div");
         row.className = "shop-item";
         const amtStr = item.amount ? `${item.amount} ${item.unit || ""}`.trim() : "";
+        const checked = (this._fixedChecked || new Set()).has(item.id);
         row.innerHTML = `
+          <input type="checkbox" ${checked ? "checked" : ""} style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--primary-color);" />
           <span class="item-name" style="flex:1">${item.name}</span>
           ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}
-          <button style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 6px;opacity:.5;color:var(--primary-text-color);">✏️</button>`;
-        row.querySelector("button").addEventListener("click", () => this._openFixedProductModal(item));
+          <button class="edit-fixed-btn" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 6px;opacity:.4;color:var(--primary-text-color);">✏️</button>`;
+        const cb = row.querySelector("input");
+        cb.addEventListener("change", e => {
+          if (!this._fixedChecked) this._fixedChecked = new Set();
+          if (e.target.checked) this._fixedChecked.add(item.id);
+          else this._fixedChecked.delete(item.id);
+        });
+        row.querySelector(".edit-fixed-btn").addEventListener("click", () => this._openFixedProductModal(item));
         section.appendChild(row);
       });
       container.appendChild(section);
     });
+  }
+
+  async _addFixedToWeek() {
+    if (!this._fixedChecked || !this._fixedChecked.size) {
+      alert("Vink eerst een of meerdere producten aan.");
+      return;
+    }
+    const week = this._shoppingWeek;
+    const shopping = JSON.parse(JSON.stringify(this._shopping[week] || { items: [], extra_items: [] }));
+    shopping.extra_items = shopping.extra_items || [];
+    const selected = this._fixedProducts.filter(p => this._fixedChecked.has(p.id));
+    selected.forEach(p => {
+      const alreadyExists = shopping.extra_items.some(i => i.name.toLowerCase() === p.name.toLowerCase());
+      if (!alreadyExists) {
+        shopping.extra_items.push({
+          id: "e_" + Date.now() + "_" + Math.random().toString(36).slice(2,6),
+          name: p.name,
+          amount: p.amount || 0,
+          unit: p.unit || "",
+          shop_category: p.shop_category || "overige",
+          checked: false,
+        });
+      }
+    });
+    this._fixedChecked = new Set();
+    await this._saveShopping(week, shopping);
+    // Switch to week tab to show result
+    const r = this.shadowRoot;
+    r.getElementById("subtab-week").style.display = "";
+    r.getElementById("subtab-fixed").style.display = "none";
+    r.getElementById("subtab-week-btn").classList.add("active");
+    r.getElementById("subtab-fixed-btn").classList.remove("active");
+    this._renderFixedProducts();
   }
 
   _openFixedProductModal(item = null) {
