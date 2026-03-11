@@ -1,6 +1,7 @@
 """Meal Planner integration for Home Assistant."""
 import json
 import os
+import re
 import shutil
 import uuid
 import logging
