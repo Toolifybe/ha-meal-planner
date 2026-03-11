@@ -90,6 +90,8 @@ async def async_setup(hass: HomeAssistant, config: dict):
             "steps": [],
             "created_at": datetime.now().isoformat(),
             "last_cooked": None,
+            "rating": body.get("rating", 0),
+            "favourite": body.get("favourite", False),
         }
         recipes.append(recipe)
         await hass.async_add_executor_job(_save_json, recipes_path, recipes)
@@ -132,6 +134,8 @@ class RecipesView(HomeAssistantView):
             "steps": body.get("steps", []),
             "created_at": now,
             "last_cooked": None,
+            "rating": body.get("rating", 0),
+            "favourite": body.get("favourite", False),
         }
         recipes.append(recipe)
         await hass.async_add_executor_job(_save_json, self._path, recipes)
@@ -155,7 +159,8 @@ class RecipeDetailView(HomeAssistantView):
             if r["id"] == recipe_id:
                 for field in ("name", "description", "category", "tags", "prep_time",
                               "cook_time", "servings", "difficulty", "image",
-                              "source_url", "ingredients", "steps", "last_cooked"):
+                              "source_url", "ingredients", "steps", "last_cooked",
+                              "rating", "favourite"):
                     if field in body:
                         recipes[i][field] = body[field]
                 await hass.async_add_executor_job(_save_json, self._path, recipes)

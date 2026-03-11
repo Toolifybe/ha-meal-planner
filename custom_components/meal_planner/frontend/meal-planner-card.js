@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.3.0";
+const MP_VERSION = "1.3.2";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -550,6 +550,22 @@ class MealPlannerCard extends HTMLElement {
               <input type="url" id="rm-source" placeholder="https://..." />
             </div>
           </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Beoordeling</label>
+              <div class="star-rating" id="rm-star-rating">
+                <span class="star" data-val="1">⭐</span>
+                <span class="star" data-val="2">⭐</span>
+                <span class="star" data-val="3">⭐</span>
+                <span class="star" data-val="4">⭐</span>
+                <span class="star" data-val="5">⭐</span>
+              </div>
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:8px;padding-top:22px;">
+              <input type="checkbox" id="rm-favourite" style="width:18px;height:18px;accent-color:var(--primary-color);" />
+              <label for="rm-favourite" style="margin:0;font-size:.88em;cursor:pointer;">❤️ Favoriet</label>
+            </div>
+          </div>
           <div class="form-group">
             <label>Tags</label>
             <div class="tags-wrap" id="rm-tags-wrap">
@@ -683,6 +699,7 @@ class MealPlannerCard extends HTMLElement {
     r.querySelectorAll("#rm-star-rating .star").forEach(star => {
       star.addEventListener("click", () => {
         const val = parseInt(star.dataset.val);
+        this._currentRating = val;
         r.querySelectorAll("#rm-star-rating .star").forEach(s => s.classList.toggle("active", parseInt(s.dataset.val) <= val));
       });
     });
@@ -879,8 +896,8 @@ class MealPlannerCard extends HTMLElement {
     r.getElementById("rm-delete").style.display = recipe ? "inline-flex" : "none";
     // Rating stars
     const stars = r.querySelectorAll("#rm-star-rating .star");
-    const rating = recipe?.rating || 0;
-    stars.forEach(s => s.classList.toggle("active", parseInt(s.dataset.val) <= rating));
+    this._currentRating = recipe?.rating || 0;
+    stars.forEach(s => s.classList.toggle("active", parseInt(s.dataset.val) <= this._currentRating));
     r.getElementById("rm-favourite").checked = recipe?.favourite || false;
     r.getElementById("recipe-modal").classList.add("open");
     setTimeout(() => r.getElementById("rm-name").focus(), 50);
@@ -901,7 +918,7 @@ class MealPlannerCard extends HTMLElement {
       cook_time: parseInt(r.getElementById("rm-cook").value) || 0,
       difficulty: r.getElementById("rm-difficulty").value,
       source_url: r.getElementById("rm-source").value.trim(),
-      rating: parseInt(r.querySelector("#rm-star-rating .star.active:last-of-type")?.dataset.val || "0") || 0,
+      rating: this._currentRating || 0,
       favourite: r.getElementById("rm-favourite").checked,
       tags: this._getTags(),
       image: preview.style.display !== "none" ? preview.src : null,
