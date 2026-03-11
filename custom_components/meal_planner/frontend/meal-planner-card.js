@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.3.4";
+const MP_VERSION = "1.3.8";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -192,8 +192,16 @@ const STYLES = `
   .btn-sm { padding:5px 10px; font-size:.78em; }
 
   /* Ingredients editor */
-  .ing-row { display:grid; grid-template-columns:1fr 70px 90px 110px 22px; gap:5px; align-items:center; margin-bottom:5px; }
-  .ing-row input,.ing-row select { padding:5px 7px; border:1px solid var(--divider-color,#ddd); border-radius:4px; font-size:.82em; background:var(--input-fill-color,#f5f5f5); color:var(--primary-text-color); width:100%; box-sizing:border-box; font-family:inherit; }
+  .ing-row { display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--divider-color,#f0f0f0); cursor:default; }
+  .ing-row.drag-over { border-top:2px solid var(--primary-color); padding-top:6px; }
+  .ing-name { flex:1 1 120px; min-width:100px; }
+  .ing-amount { width:60px; flex-shrink:0; }
+  .ing-unit { width:70px; flex-shrink:0; }
+  .ing-shopcat { flex:1 1 100px; min-width:90px; }
+  .ing-row button { flex-shrink:0; }
+  .drag-handle { cursor:grab; color:var(--secondary-text-color); opacity:.4; font-size:16px; user-select:none; flex-shrink:0; }
+  .drag-handle:active { cursor:grabbing; }
+  .ing-row input,.ing-row select { padding:5px 7px; border:1px solid var(--divider-color,#ddd); border-radius:4px; font-size:.82em; background:var(--input-fill-color,#f5f5f5); color:var(--primary-text-color); box-sizing:border-box; font-family:inherit; width:100%; }
   .ing-row button { background:none; border:none; cursor:pointer; color:#e53935; font-size:15px; padding:0; line-height:1; }
   .ing-header { display:grid; grid-template-columns:1fr 70px 90px 110px 22px; gap:5px; font-size:.72em; color:var(--secondary-text-color); font-weight:600; margin-bottom:4px; }
 
@@ -789,7 +797,9 @@ class MealPlannerCard extends HTMLElement {
     const container = this.shadowRoot.getElementById("rm-ingredients");
     const row = document.createElement("div");
     row.className = "ing-row";
+    row.draggable = true;
     row.innerHTML = `
+      <span class="drag-handle" title="Versleep om te herordenen">⠿</span>
       <input type="text" placeholder="Naam" value="${ing.name || ""}" class="ing-name" />
       <input type="number" placeholder="0" value="${ing.amount || ""}" class="ing-amount" min="0" step="0.1" />
       <input type="text" placeholder="g / stuk / ml" value="${ing.unit || ""}" class="ing-unit" />
@@ -799,6 +809,35 @@ class MealPlannerCard extends HTMLElement {
       <button type="button">🗑</button>
     `;
     row.querySelector("button").addEventListener("click", () => row.remove());
+
+    // Drag & drop reorder
+    row.addEventListener("dragstart", e => {
+      this._dragSrcRow = row;
+      e.dataTransfer.effectAllowed = "move";
+      setTimeout(() => row.style.opacity = "0.4", 0);
+    });
+    row.addEventListener("dragend", () => {
+      row.style.opacity = "";
+      container.querySelectorAll(".ing-row").forEach(r => r.classList.remove("drag-over"));
+    });
+    row.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      container.querySelectorAll(".ing-row").forEach(r => r.classList.remove("drag-over"));
+      if (row !== this._dragSrcRow) row.classList.add("drag-over");
+    });
+    row.addEventListener("drop", e => {
+      e.preventDefault();
+      if (this._dragSrcRow && this._dragSrcRow !== row) {
+        const rows = [...container.querySelectorAll(".ing-row")];
+        const srcIdx = rows.indexOf(this._dragSrcRow);
+        const tgtIdx = rows.indexOf(row);
+        if (srcIdx < tgtIdx) container.insertBefore(this._dragSrcRow, row.nextSibling);
+        else container.insertBefore(this._dragSrcRow, row);
+      }
+      container.querySelectorAll(".ing-row").forEach(r => r.classList.remove("drag-over"));
+    });
+
     container.appendChild(row);
   }
 
