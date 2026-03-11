@@ -15,7 +15,7 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 - ⭐ **Star ratings** — rate recipes from 1 to 5 stars
 - ❤️ **Favourites** — mark recipes as favourite and filter on them
 - 🔀 **Drag & drop ingredients** — reorder ingredients in a recipe
-- 📥 **Import via URL** — scrape recipes from Dagelijkse Kost, Njam, and any recipe site with JSON-LD
+- 📥 **Import via URL** — scrape recipes from any site with JSON-LD (e.g. Dagelijkse Kost, Njam)
 - 🛒 **Auto shopping list** — generated from the week's recipes, grouped by shop category
 - 📌 **Fixed products** — always-needed items you can add to any week's list
 - 🌙 **Tonight's dinner widget** — always visible on the planner tab
@@ -33,7 +33,7 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 ### Step 1: Add as custom repository
 
 1. Open **HACS** → **Integrations** → **⋮** → **Custom repositories**
-2. URL: `https://github.com/toolifybe/ha-meal-planner`
+2. URL: `https://github.com/YOUR_GITHUB_USERNAME/ha-meal-planner`
 3. Category: **Integration**
 
 ### Step 2: Install & restart HA
@@ -119,11 +119,13 @@ ha-meal-planner/
 
 ---
 
-## 🌍 Taal & Labels aanpassen
+## 🌍 Translating Labels
 
-Alle teksten in de kaart zijn aanpasbaar via de `labels:` configuratie. Zo kan je de app in een andere taal zetten of eigen benamingen gebruiken.
+All text in the card can be customised via the `labels:` config key. This lets you translate the app into any language or use your own terminology.
 
-### Voorbeeld — Engels
+> **Note:** `labels` replaces values — it does not merge with defaults. For list fields like `shop_categories`, you must supply the full list including any existing entries you want to keep.
+
+### Example — English
 
 ```yaml
 type: custom:meal-planner-card
@@ -196,10 +198,10 @@ labels:
     - "other"
 ```
 
-### Alle beschikbare label-sleutels
+### All available label keys
 
-| Sleutel | Standaard (NL) |
-|---------|---------------|
+| Key | Default (Dutch) |
+|-----|----------------|
 | `tab_planner` | Weekplanner |
 | `tab_recipes` | Recepten |
 | `tab_shopping` | Boodschappen |
@@ -262,67 +264,67 @@ labels:
 ## 📋 Changelog
 
 ### v1.5.0
-- 🌍 Alle teksten configureerbaar via `labels:` in de kaartconfiguratie
-- Volledige vertaling mogelijk naar elke taal
-- README bijgewerkt met volledige labelreferentie en Engels voorbeeld
+- 🌍 All labels configurable via `labels:` in card config
+- Full translation support for any language
+- README rewritten in English
 
 ### v1.4.0
-- 🐛 Ingrediënten sub-velden niet langer uitgerekt naar volledige breedte
+- 🐛 Ingredient sub-fields no longer stretched to full width
 
 ### v1.3.9
-- 🎨 Compacte 2-lijn layout voor ingrediënten (naam bovenaan, details eronder)
+- 🎨 Compact 2-line ingredient layout (name on top, details below)
 
 ### v1.3.6
-- 🔀 Drag & drop herordening van ingrediënten in recepten
+- 🔀 Drag & drop reordering of ingredients
 
 ### v1.3.5
-- 🐛 Ontbrekende `re` import hersteld in backend (URL import kapot)
+- 🐛 Missing `re` import restored in backend (broke URL import)
 
 ### v1.3.4
-- 🐛 `urllib` vervangen door `aiohttp` voor URL import (werkt nu in HA)
+- 🐛 Replaced `urllib` with `aiohttp` for URL import
 
 ### v1.3.3
-- 🐛 Klikken op actieve ster wist nu de beoordeling (terug naar 0)
+- 🐛 Clicking an active star now clears the rating to 0
 
 ### v1.3.2
-- 🐛 `rating` en `favourite` velden toegevoegd aan backend whitelist
+- 🐛 Added `rating` and `favourite` fields to backend save whitelist
 
 ### v1.3.1
-- 🐛 Sterren rating bijgehouden in instantie-variabele i.p.v. DOM-selector
+- 🐛 Star rating stored in instance variable instead of unreliable DOM selector
 
 ### v1.3.0
-- ⭐ Recepten beoordelen met 1–5 sterren
-- ❤️ Favorieten markeren + filter op favorieten
-- 📝 Notitie per dag in de weekplanner (bv. "gasten", "takeaway")
+- ⭐ Rate recipes with 1–5 stars
+- ❤️ Mark recipes as favourite + filter on them
+- 📝 Day notes in the week planner (e.g. "guests", "takeaway")
 
 ### v1.2.0
-- 📥 Recepten importeren via URL (JSON-LD scraping)
+- 📥 Import recipes from URL via JSON-LD scraping
 
 ### v1.1.7
-- 🗑️ Verwijderknop op extra items in weeklijst
+- 🗑️ Delete button on extra shopping items
 
 ### v1.1.6
-- 🐛 Vaste producten correct opgeslagen en weergegeven
+- 🐛 Fixed products now save and render correctly
 
 ### v1.1.5
-- 🗑️ Directe verwijderknop per vast product
+- 🗑️ Direct delete button per fixed product row
 
 ### v1.1.4
-- 🐛 Modalmode via instantie-variabele i.p.v. dataset
+- 🐛 Modal mode tracked via instance variable instead of dataset
 
 ### v1.1.3
-- 📌 Vaste producten met checkboxes en "Toevoegen aan weeklijst" knop
+- 📌 Fixed products with checkboxes and manual add-to-week button
 
 ### v1.1.2
-- 🐛 Race condition opgelost bij laden planner
+- 🐛 Race condition fixed: recipes load before planner renders
 
 ### v1.1.1
-- 📱 Verwijderknop altijd zichtbaar op touchscreen
+- 📱 Remove button always visible on touch devices
 
 ### v1.1.0
-- 📅 Weekplanner 2-kolom layout
-- 📌 Vaste producten tab
-- 👤 Aantal personen instelbaar per dag
+- 📅 Single dinner planner with 2-column layout
+- 📌 Fixed products tab in shopping
+- 👤 Configurable servings per day
 
 ### v1.0.0
-- 🎉 Eerste release
+- 🎉 Initial release
