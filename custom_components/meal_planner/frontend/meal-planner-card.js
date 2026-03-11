@@ -8,41 +8,41 @@ const MP_VERSION = "1.5.0";
 
 const DEFAULT_LABELS = {
   // Tabs
-  tab_planner:        this._l("tab_planner"),
-  tab_recipes:        this._l("tab_recipes"),
-  tab_shopping:       this._l("tab_shopping"),
+  tab_planner:        "Weekplanner",
+  tab_recipes:        "Recepten",
+  tab_shopping:       "Boodschappen",
 
   // Planner
-  planner_tonight:    this._l("planner_tonight"),
+  planner_tonight:    "🌙 Vanavond",
   planner_empty:      "+ Kies maaltijd",
-  planner_note_empty: this._l("planner_note_empty"),
-  planner_copy:       this._l("planner_copy"),
-  planner_random:     this._l("planner_random"),
+  planner_note_empty: "＋ notitie toevoegen",
+  planner_copy:       "📋 Vorige week kopiëren",
+  planner_random:     "🎲 Willekeurig",
 
   // Recipes
   recipes_search:     "Zoek recept...",
-  recipes_add:        "${this._l("recipes_add")}",
+  recipes_add:        "+ Recept",
   recipes_import:     "📥 Importeren",
-  recipes_all_cats:   "${this._l("recipes_all_cats")}",
-  recipes_empty:      this._l("recipes_empty"),
-  recipes_empty_sub:  "Klik op ${this._l("recipes_empty_sub")}",
+  recipes_all_cats:   "Alle categorieën",
+  recipes_empty:      "Geen recepten gevonden.",
+  recipes_empty_sub:  "Klik op + Recept om te beginnen.",
 
   // Recipe modal
-  recipe_modal_add:   this._l("recipe_modal_add"),
-  recipe_modal_edit:  this._l("recipe_modal_edit"),
-  recipe_name:        "${this._l("recipe_name")}",
+  recipe_modal_add:   "Recept toevoegen",
+  recipe_modal_edit:  "Recept bewerken",
+  recipe_name:        "Naam *",
   recipe_category:    "Categorie",
   recipe_description: "Beschrijving",
-  recipe_desc_ph:     "${this._l("recipe_desc_ph")}",
+  recipe_desc_ph:     "Korte beschrijving...",
   recipe_servings:    "Personen",
   recipe_prep:        "Bereidingstijd (min)",
   recipe_cook:        "Kooktijd (min)",
   recipe_difficulty:  "Moeilijkheid",
   recipe_source:      "Bron URL",
   recipe_rating:      "Beoordeling",
-  recipe_favourite:   "${this._l("recipe_favourite")}",
+  recipe_favourite:   "❤️ Favoriet",
   recipe_tags:        "Tags",
-  recipe_tags_ph:     "${this._l("recipe_tags_ph")}",
+  recipe_tags_ph:     "Tag toevoegen + Enter...",
   recipe_photo:       "Foto",
   recipe_photo_ph:    "📸 Klik of sleep een foto",
   recipe_ingredients: "Ingrediënten",
@@ -50,42 +50,36 @@ const DEFAULT_LABELS = {
   recipe_ing_amount:  "Hoeveelheid",
   recipe_ing_unit:    "Eenheid",
   recipe_ing_cat:     "Winkelcategorie",
-  recipe_add_ing:     "${this._l("recipe_add_ing")}",
+  recipe_add_ing:     "+ Ingrediënt",
   recipe_steps:       "Bereiding",
-  recipe_add_step:    "${this._l("recipe_add_step")}",
+  recipe_add_step:    "+ Stap",
 
   // Import modal
-  import_title:       this._l("import_title"),
-  import_intro:       "${this._l("import_intro")}",
+  import_title:       "Recept importeren",
+  import_intro:       "Plak een link van Dagelijkse Kost, Njam, of een andere receptensite.",
   import_url_label:   "URL",
-  import_fetch:       this._l("import_fetch"),
+  import_fetch:       "Ophalen",
 
   // Shopping
-  shop_subtab_week:   this._l("shop_subtab_week"),
-  shop_subtab_fixed:  this._l("shop_subtab_fixed"),
-  shop_generate:      this._l("shop_generate"),
+  shop_subtab_week:   "Weeklijst",
+  shop_subtab_fixed:  "Vaste producten",
+  shop_generate:      "🛒 Genereer boodschappenlijst",
   shop_empty:         "Nog geen boodschappenlijst.",
-  shop_empty_sub:     "Klik op 'Genereer' om te starten.",
-  shop_extra_add:     this._l("shop_extra_add"),
-  shop_fixed_add:     this._l("shop_fixed_add"),
-  shop_fixed_to_week: this._l("shop_fixed_to_week"),
+  shop_empty_sub:     "Klik op Genereer om te starten.",
+  shop_extra_add:     "+ Extra item",
+  shop_fixed_add:     "+ Vast product",
+  shop_fixed_to_week: "Toevoegen aan weeklijst",
   shop_fixed_empty:   "Nog geen vaste producten.",
-  shop_fixed_empty_sub:"Voeg producten toe die je altijd nodig hebt.",
+  shop_fixed_empty_sub: "Voeg producten toe die je altijd nodig hebt.",
 
   // Pick modal
-  pick_title:         this._l("pick_title"),
-  pick_search:        "Zoek recept...",
-
-  // Extra / fixed modal
-  extra_name:         "Naam",
-  extra_amount:       "Hoeveelheid",
-  extra_unit:         "Eenheid",
-  extra_category:     "Categorie",
+  pick_title:         "Maaltijd kiezen",
+  pick_search:        "🔍 Zoeken...",
 
   // General buttons
-  btn_save:           this._l("btn_save"),
-  btn_cancel:         this._l("btn_cancel"),
-  btn_delete:         this._l("btn_delete"),
+  btn_save:           "Opslaan",
+  btn_cancel:         "Annuleren",
+  btn_delete:         "Verwijderen",
 
   // Difficulties
   diff_easy:          "Makkelijk",
@@ -103,7 +97,6 @@ const DEFAULT_LABELS = {
     "pasta & rijst","conserven & sauzen","diepvries","dranken","snoep & koek","overige"
   ],
 };
-
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 // DAYS_LABEL now from this._labels.days_short
 // DAYS_FULL now from this._labels.days_full
@@ -511,7 +504,7 @@ class MealPlannerCard extends HTMLElement {
 
         <div class="tab-content" id="tab-recipes">
           <div class="recipe-toolbar">
-            <input class="search-input" id="recipe-search" placeholder="${this._l("recipes_search")}" />
+            <input class="search-input" id="recipe-search" placeholder="${this._l('recipes_search')}" />
             <select class="filter-select" id="recipe-cat-filter">
               <option value="">${this._l("recipes_all_cats")}</option>
               ${this._labels.categories.map(c => `<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join("")}
@@ -595,7 +588,7 @@ class MealPlannerCard extends HTMLElement {
       <div class="modal-overlay" id="pick-modal">
         <div class="modal">
           <h3 id="pick-modal-title">${this._l("pick_title")}</h3>
-          <input class="pick-search" id="pick-search" placeholder="${this._l("pick_search")}" />
+          <input class="pick-search" id="pick-search" placeholder="${this._l('pick_search')}" />
           <div class="pick-list" id="pick-list"></div>
           <div class="modal-actions">
             <button class="btn btn-secondary" id="pick-cancel">${this._l("btn_cancel")}</button>
@@ -629,7 +622,7 @@ class MealPlannerCard extends HTMLElement {
           <div class="form-row">
             <div class="form-group">
               <label>${this._l("recipe_name")}</label>
-              <input type="text" id="rm-name" placeholder="${this._l("recipe_name")}" />
+              <input type="text" id="rm-name" placeholder="${this._l('recipe_name')}" />
             </div>
             <div class="form-group">
               <label>${this._l("recipe_category")}</label>
@@ -640,7 +633,7 @@ class MealPlannerCard extends HTMLElement {
           </div>
           <div class="form-group">
             <label>${this._l("recipe_description")}</label>
-            <textarea id="rm-description" placeholder="${this._l("recipe_desc_ph")}"></textarea>
+            <textarea id="rm-description" placeholder="${this._l('recipe_desc_ph')}"></textarea>
           </div>
           <div class="form-row-3">
             <div class="form-group">
@@ -689,7 +682,7 @@ class MealPlannerCard extends HTMLElement {
           <div class="form-group">
             <label>${this._l("recipe_tags")}</label>
             <div class="tags-wrap" id="rm-tags-wrap">
-              <input type="text" id="rm-tag-input" placeholder="${this._l("recipe_tags_ph")}" />
+              <input type="text" id="rm-tag-input" placeholder="${this._l('recipe_tags_ph')}" />
             </div>
           </div>
           <div class="form-group">
@@ -1023,7 +1016,7 @@ class MealPlannerCard extends HTMLElement {
   _openRecipeModal(recipe = null) {
     const r = this.shadowRoot;
     this._editingRecipe = recipe;
-    r.getElementById("recipe-modal-title").textContent = recipe ? this._l("recipe_modal_edit") : "${this._l("recipe_modal_add")}";
+    r.getElementById("recipe-modal-title").textContent = recipe ? this._l("recipe_modal_edit") : this._l("recipe_modal_add");
     r.getElementById("rm-name").value = recipe?.name || "";
     r.getElementById("rm-description").value = recipe?.description || "";
     r.getElementById("rm-category").value = recipe?.category || "avondeten";
@@ -1086,7 +1079,7 @@ class MealPlannerCard extends HTMLElement {
   _openExtraModal(item = null) {
     const r = this.shadowRoot;
     this._editingExtraItem = item;
-    r.getElementById("extra-modal-title").textContent = item ? "Item bewerken" : "${this._l("shop_extra_add")}";
+    r.getElementById("extra-modal-title").textContent = item ? this._l("extra_edit") : this._l("shop_extra_add");
     r.getElementById("ei-name").value = item?.name || "";
     r.getElementById("ei-amount").value = item?.amount || "";
     r.getElementById("ei-unit").value = item?.unit || "";
