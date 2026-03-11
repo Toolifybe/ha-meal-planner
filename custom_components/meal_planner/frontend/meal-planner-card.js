@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.1.3";
+const MP_VERSION = "1.1.5";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -822,7 +822,7 @@ class MealPlannerCard extends HTMLElement {
     r.getElementById("ei-unit").value = item?.unit || "";
     r.getElementById("ei-category").value = item?.shop_category || "overige";
     r.getElementById("ei-delete").style.display = item ? "inline-flex" : "none";
-    r.getElementById("ei-save").dataset.mode = "extra";
+    this._modalMode = "extra";
     r.getElementById("extra-modal").classList.add("open");
     setTimeout(() => r.getElementById("ei-name").focus(), 50);
   }
@@ -832,7 +832,7 @@ class MealPlannerCard extends HTMLElement {
     const name = r.getElementById("ei-name").value.trim();
     if (!name) { r.getElementById("ei-name").style.borderColor = "red"; return; }
     r.getElementById("ei-name").style.borderColor = "";
-    const mode = r.getElementById("ei-save").dataset.mode;
+    const mode = this._modalMode || "extra";
     const itemData = {
       id: (this._editingExtraItem || this._editingFixedProduct)?.id || (mode === "fixed" ? "f_" : "e_") + Date.now(),
       name,
@@ -869,7 +869,7 @@ class MealPlannerCard extends HTMLElement {
 
   _deleteExtraItem() {
     const r = this.shadowRoot;
-    const mode = r.getElementById("ei-save").dataset.mode;
+    const mode = this._modalMode || "extra";
     r.getElementById("extra-modal").classList.remove("open");
     if (mode === "fixed") {
       if (!this._editingFixedProduct) return;
@@ -928,7 +928,8 @@ class MealPlannerCard extends HTMLElement {
           <input type="checkbox" ${checked ? "checked" : ""} style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--primary-color);" />
           <span class="item-name" style="flex:1">${item.name}</span>
           ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}
-          <button class="edit-fixed-btn" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 6px;opacity:.4;color:var(--primary-text-color);">✏️</button>`;
+          <button class="edit-fixed-btn" title="Bewerken" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:var(--primary-text-color);">✏️</button>
+          <button class="del-fixed-btn" title="Verwijderen" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:#e53935;">🗑️</button>`;
         const cb = row.querySelector("input");
         cb.addEventListener("change", e => {
           if (!this._fixedChecked) this._fixedChecked = new Set();
@@ -936,6 +937,10 @@ class MealPlannerCard extends HTMLElement {
           else this._fixedChecked.delete(item.id);
         });
         row.querySelector(".edit-fixed-btn").addEventListener("click", () => this._openFixedProductModal(item));
+        row.querySelector(".del-fixed-btn").addEventListener("click", () => {
+          const products = this._fixedProducts.filter(p => p.id !== item.id);
+          this._saveFixedProducts(products);
+        });
         section.appendChild(row);
       });
       container.appendChild(section);
@@ -984,7 +989,7 @@ class MealPlannerCard extends HTMLElement {
     r.getElementById("ei-unit").value = item?.unit || "";
     r.getElementById("ei-category").value = item?.shop_category || "overige";
     r.getElementById("ei-delete").style.display = item ? "inline-flex" : "none";
-    r.getElementById("ei-save").dataset.mode = "fixed";
+    this._modalMode = "fixed";
     r.getElementById("extra-modal").classList.add("open");
     setTimeout(() => r.getElementById("ei-name").focus(), 50);
   }
