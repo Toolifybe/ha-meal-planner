@@ -14,6 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 RECIPES_FILE = "meal_planner_recipes.json"
 PLANNING_FILE = "meal_planner_planning.json"
 SHOPPING_FILE = "meal_planner_shopping.json"
+FIXED_PRODUCTS_FILE = "meal_planner_fixed_products.json"
 
 SHOP_CATEGORIES = [
     "groenten & fruit", "vlees & vis", "zuivel & eieren",
@@ -60,13 +61,15 @@ async def async_setup(hass: HomeAssistant, config: dict):
     recipes_path = _get_path(hass, RECIPES_FILE)
     planning_path = _get_path(hass, PLANNING_FILE)
     shopping_path = _get_path(hass, SHOPPING_FILE)
+    fixed_path = _get_path(hass, FIXED_PRODUCTS_FILE)
 
     hass.http.register_view(RecipesView(recipes_path))
     hass.http.register_view(RecipeDetailView(recipes_path))
     hass.http.register_view(PlanningView(planning_path))
-    hass.http.register_view(ShoppingView(shopping_path, recipes_path, planning_path))
+    hass.http.register_view(ShoppingView(shopping_path, recipes_path, planning_path, fixed_path))
     hass.http.register_view(ShoppingItemView(shopping_path))
     hass.http.register_view(TodaysDinnerView(planning_path, recipes_path))
+    hass.http.register_view(FixedProductsView(fixed_path))
 
     async def handle_add_recipe(call: ServiceCall):
         recipes = await hass.async_add_executor_job(_load_json, recipes_path, [])
@@ -204,10 +207,11 @@ class ShoppingView(HomeAssistantView):
     name = "api:meal_planner:shopping"
     requires_auth = True
 
-    def __init__(self, shopping_path, recipes_path, planning_path):
+    def __init__(self, shopping_path, recipes_path, planning_path, fixed_path=None):
         self._shopping_path = shopping_path
         self._recipes_path = recipes_path
         self._planning_path = planning_path
+        self._fixed_path = fixed_path
 
     async def get(self, request, week):
         hass = request.app["hass"]
@@ -303,6 +307,26 @@ class ShoppingItemView(HomeAssistantView):
         all_shopping[week] = shopping
         await hass.async_add_executor_job(_save_json, self._shopping_path, all_shopping)
         return self.json({"ok": True})
+
+
+class FixedProductsView(HomeAssistantView):
+    url = "/api/meal_planner/fixed_products"
+    name = "api:meal_planner:fixed_products"
+    requires_auth = True
+
+    def __init__(self, path):
+        self._path = path
+
+    async def get(self, request):
+        hass = request.app["hass"]
+        products = await hass.async_add_executor_job(_load_json, self._path, [])
+        return self.json(products)
+
+    async def put(self, request):
+        hass = request.app["hass"]
+        body = await request.json()
+        await hass.async_add_executor_job(_save_json, self._path, body)
+        return self.json(body)
 
 
 class TodaysDinnerView(HomeAssistantView):

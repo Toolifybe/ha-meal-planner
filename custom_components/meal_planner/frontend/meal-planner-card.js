@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.1.5";
+const MP_VERSION = "1.1.7";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -982,6 +982,8 @@ class MealPlannerCard extends HTMLElement {
 
   _openFixedProductModal(item = null) {
     this._editingFixedProduct = item;
+    this._editingExtraItem = null;
+    this._modalMode = "fixed";
     const r = this.shadowRoot;
     r.getElementById("extra-modal-title").textContent = item ? "Vast product bewerken" : "Vast product toevoegen";
     r.getElementById("ei-name").value = item?.name || "";
@@ -989,7 +991,6 @@ class MealPlannerCard extends HTMLElement {
     r.getElementById("ei-unit").value = item?.unit || "";
     r.getElementById("ei-category").value = item?.shop_category || "overige";
     r.getElementById("ei-delete").style.display = item ? "inline-flex" : "none";
-    this._modalMode = "fixed";
     r.getElementById("extra-modal").classList.add("open");
     setTimeout(() => r.getElementById("ei-name").focus(), 50);
   }
@@ -1192,7 +1193,7 @@ class MealPlannerCard extends HTMLElement {
           <input type="checkbox" ${item.checked ? "checked" : ""} />
           <span class="item-name">${item.name}</span>
           ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}
-          ${isExtra ? `<button class="edit-extra-btn" title="Bewerken / Verwijderen" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:var(--primary-text-color);flex-shrink:0;">✏️</button>` : ""}`;
+          ${isExtra ? `<button class="edit-extra-btn" title="Bewerken" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:var(--primary-text-color);flex-shrink:0;">✏️</button><button class="del-extra-btn" title="Verwijderen" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:#e53935;flex-shrink:0;">🗑️</button>` : ""}`;
         row.querySelector("input").addEventListener("change", e => {
           const newChecked = e.target.checked;
           const newShopping = JSON.parse(JSON.stringify(shopping));
@@ -1205,6 +1206,12 @@ class MealPlannerCard extends HTMLElement {
           row.querySelector(".edit-extra-btn").addEventListener("click", e => {
             e.stopPropagation();
             this._openExtraModal(item);
+          });
+          row.querySelector(".del-extra-btn").addEventListener("click", e => {
+            e.stopPropagation();
+            const newShopping = JSON.parse(JSON.stringify(shopping));
+            newShopping.extra_items = (newShopping.extra_items || []).filter(i => i.id !== item.id);
+            this._saveShopping(week, newShopping);
           });
         }
         section.appendChild(row);
