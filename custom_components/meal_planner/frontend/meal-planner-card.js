@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.3.2";
+const MP_VERSION = "1.3.4";
 
 const DAYS_NL = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const DAYS_LABEL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -699,8 +699,9 @@ class MealPlannerCard extends HTMLElement {
     r.querySelectorAll("#rm-star-rating .star").forEach(star => {
       star.addEventListener("click", () => {
         const val = parseInt(star.dataset.val);
-        this._currentRating = val;
-        r.querySelectorAll("#rm-star-rating .star").forEach(s => s.classList.toggle("active", parseInt(s.dataset.val) <= val));
+        // Click same star again = clear rating
+        this._currentRating = (this._currentRating === val) ? 0 : val;
+        r.querySelectorAll("#rm-star-rating .star").forEach(s => s.classList.toggle("active", parseInt(s.dataset.val) <= this._currentRating));
       });
     });
     // Favourites filter

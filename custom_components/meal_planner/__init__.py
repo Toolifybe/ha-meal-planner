@@ -358,26 +358,30 @@ class ImportRecipeView(HomeAssistantView):
     requires_auth = True
 
     async def post(self, request):
+        import html
+        import aiohttp
         hass = request.app["hass"]
         body = await request.json()
         url = body.get("url", "").strip()
         if not url:
             return self.json({"error": "Geen URL opgegeven"})
         try:
-            recipe = await hass.async_add_executor_job(self._scrape, url)
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.8",
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                    if resp.status != 200:
+                        return self.json({"error": f"Pagina niet bereikbaar (HTTP {resp.status})"})
+                    raw = await resp.text(errors="replace")
+            recipe = self._parse(raw, url, html)
             return self.json(recipe)
         except Exception as e:
             return self.json({"error": str(e)})
 
-    def _scrape(self, url):
-        import html
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; HomeAssistant MealPlanner)",
-            "Accept": "text/html,application/xhtml+xml",
-            "Accept-Language": "nl-BE,nl;q=0.9",
-        })
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
+    def _parse(self, raw, url, html):
 
         # Find JSON-LD blocks
         json_ld_blocks = re.findall(r"""<script[^>]+type=["'"]application/ld\+json["'"][^>]*>(.*?)</script>""", raw, re.DOTALL)
