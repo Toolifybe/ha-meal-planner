@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.5.0";
+const MP_VERSION = "1.5.1";
 
 
 const DEFAULT_LABELS = {
@@ -911,7 +911,7 @@ class MealPlannerCard extends HTMLElement {
         <input type="number" placeholder="0" value="${ing.amount || ""}" class="ing-amount" min="0" step="0.1" />
         <input type="text" placeholder="${this._l('recipe_ing_unit')}" value="${ing.unit || ""}" class="ing-unit" />
         <select class="ing-shopcat">
-          ${SHOP_this._labels.categories.map(c => `<option value="${c}" ${ing.shop_category === c ? "selected" : ""}>${c}</option>`).join("")}
+          ${this._labels.shop_categories.map(c => `<option value="${c}" ${ing.shop_category === c ? "selected" : ""}>${c}</option>`).join("")}
         </select>
       </div>
     `;
