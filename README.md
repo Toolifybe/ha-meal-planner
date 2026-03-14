@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-1.7.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.7.2-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -264,6 +264,10 @@ labels:
 ---
 
 ## 📋 Changelog
+
+### v1.7.2
+- 🐛 Long recipe titles now wrap over multiple lines instead of being cut off
+- 🐛 Remove button (×) repositioned to top-right corner, always visible
 
 ### v1.7.1
 - 🐛 Remove button (×) always visible on mobile, long recipe titles no longer push it off screen
