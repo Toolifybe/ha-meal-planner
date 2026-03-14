@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.7.0";
+const MP_VERSION = "1.7.1";
 
 
 const DEFAULT_LABELS = {
@@ -184,15 +184,15 @@ const STYLES = `
   .planner-meal-slot.filled:hover { background:color-mix(in srgb, var(--primary-color) 8%, transparent); }
   .planner-meal-img { width:40px; height:40px; border-radius:8px; object-fit:cover; flex-shrink:0; }
   .planner-meal-emoji { display:flex; align-items:center; justify-content:center; font-size:1.4em; background:#deedf9; border-radius:8px; }
-  .planner-meal-info { flex:1; min-width:0; }
-  .planner-meal-name { font-weight:700; font-size:.92em; color:var(--primary-text-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .planner-meal-info { flex:1; min-width:0; overflow:hidden; }
+  .planner-meal-name { font-weight:700; font-size:.92em; color:var(--primary-text-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   .planner-meal-meta { font-size:.75em; color:#5b9bd5; margin-top:3px; display:flex; align-items:center; gap:5px; }
   .servings-inline { width:34px; padding:2px 4px; border:1px solid #b3d4f0; border-radius:4px; font-size:.9em; background:#f0f7fd; color:var(--primary-text-color); text-align:center; }
   .planner-meal-empty { flex:1; font-size:.85em; color:#5b9bd5; opacity:.7; }
-  .planner-remove-btn { background:none; border:none; border-radius:50%; width:28px; height:28px; font-size:14px; cursor:pointer; color:#5b9bd5; display:flex; align-items:center; justify-content:center; flex-shrink:0; opacity:0; transition:opacity .15s; padding:0; line-height:1; }
+  .planner-remove-btn { background:none; border:none; border-radius:50%; width:28px; height:28px; font-size:16px; cursor:pointer; color:#5b9bd5; display:flex; align-items:center; justify-content:center; flex-shrink:0; opacity:0; transition:opacity .15s; padding:0; line-height:1; }
   .planner-meal-slot:hover .planner-remove-btn { opacity:.5; }
   .planner-remove-btn:hover { opacity:1 !important; color:#e53935; }
-  @media (hover: none) { .planner-remove-btn { opacity:.4; } .planner-remove-btn:active { color:#e53935; opacity:1; } }
+  @media (hover: none) { .planner-remove-btn { opacity:.6; } .planner-remove-btn:active { color:#e53935; opacity:1; } }
   .week-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
   .btn-action-copy { padding:7px 14px; border:none; border-radius:6px; cursor:pointer; font-size:.82em; font-weight:600; background:#deedf9; color:#1565c0; border:1px solid #b3d4f0; transition:all .2s; }
   .btn-action-copy:hover { background:#1565c0; color:white; }
