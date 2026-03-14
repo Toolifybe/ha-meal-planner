@@ -1,7 +1,7 @@
 {
   "domain": "meal_planner",
   "name": "Meal Planner",
-  "version": "1.7.3",
+  "version": "1.8.0",
   "documentation": "https://github.com/toolifybe/ha-notes-manager",
   "issue_tracker": "https://github.com/toolifybe/ha-notes-manager/issues",
   "codeowners": ["@toolifybe"],

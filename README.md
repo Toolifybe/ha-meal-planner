@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-1.7.3-blue.svg)
+![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -24,6 +24,7 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 - 👤 **Servings per day** — scales ingredient amounts automatically
 - ✅ **Shopping checklist** with progress bar
 - ➕ **Extra items** with amount, unit and shop category
+- 🔒 **Readonly mode** — show only the week planner, nothing editable (configurable per dashboard/user)
 - 🌍 **Fully translatable** — all labels configurable via YAML
 - 🗑️ **Remove generated shopping items** — delete items you already have at home
 - 🎨 **Blue UI theme** — consistent blue color palette throughout
@@ -57,6 +58,26 @@ meal_planner:
 ```yaml
 type: custom:meal-planner-card
 ```
+
+---
+
+## 🔒 Readonly Mode
+
+Set `readonly: true` to show only the week planner without any editing options. Ideal for a family member's dashboard who should only see what's planned.
+
+```yaml
+type: custom:meal-planner-card
+readonly: true
+```
+
+In readonly mode:
+- Only the **week planner** tab is visible
+- No add, edit or delete buttons
+- Meals cannot be changed or removed
+- Notes cannot be edited
+- Navigation between weeks still works
+
+Combine with HA's per-user dashboards (**Settings → Dashboards**) to give different users different levels of access.
 
 ---
 
@@ -264,6 +285,13 @@ labels:
 ---
 
 ## 📋 Changelog
+
+### v1.8.0
+- 🔒 Readonly mode (`readonly: true`) — only shows the week planner, all editing disabled
+- Ideal for restricting access per user via separate HA dashboards
+
+### v1.7.3
+- 🐛 Favourites filter button changed from ⭐ to ❤️ to match recipe cards
 
 ### v1.7.2
 - 🐛 Long recipe titles now wrap over multiple lines instead of being cut off

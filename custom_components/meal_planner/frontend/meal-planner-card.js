@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.7.3";
+const MP_VERSION = "1.8.0";
 
 
 const DEFAULT_LABELS = {
@@ -380,11 +380,13 @@ class MealPlannerCard extends HTMLElement {
     if (!userLabels.days_full)      this._labels.days_full       = DEFAULT_LABELS.days_full;
     if (!userLabels.categories)     this._labels.categories      = DEFAULT_LABELS.categories;
     if (!userLabels.shop_categories)this._labels.shop_categories = DEFAULT_LABELS.shop_categories;
+    this._readonly = config?.readonly === true;
   }
 
   _l(key) { return this._labels?.[key] ?? DEFAULT_LABELS[key] ?? key; }
   getCardSize() { return 6; }
   static getStubConfig() { return {}; }
+  static getConfigElement() { return document.createElement("meal-planner-card-editor"); }
 
   async _fetchAll() {
     // Fetch recipes first — planner & today depend on them
@@ -478,14 +480,16 @@ class MealPlannerCard extends HTMLElement {
 
   // ─── RENDER SHELL ──────────────────────────────────────────────
   _render() {
+    const ro = this._readonly;
     this.shadowRoot.innerHTML = `
       <style>${STYLES}</style>
       <ha-card>
+        ${ro ? "" : `
         <div class="tabs">
           <button class="tab active" data-tab="planner">📅 ${this._l("tab_planner")}</button>
           <button class="tab" data-tab="recipes">📖 ${this._l("tab_recipes")}</button>
           <button class="tab" data-tab="shopping">🛒 ${this._l("tab_shopping")}</button>
-        </div>
+        </div>`}
 
         <div class="tab-content active" id="tab-planner">
           <div id="today-widget"></div>
@@ -495,12 +499,14 @@ class MealPlannerCard extends HTMLElement {
             <button id="next-week">Volgende ▶</button>
           </div>
           <div class="week-grid" id="week-grid"></div>
+          ${ro ? "" : `
           <div class="week-actions">
             <button class="btn btn-action-copy" id="copy-prev-week">${this._l("planner_copy")}</button>
             <button class="btn btn-action-random" id="random-dinners">${this._l("planner_random")}</button>
-          </div>
+          </div>`}
         </div>
 
+        ${ro ? "" : `
         <div class="tab-content" id="tab-recipes">
           <div class="recipe-toolbar">
             <input class="search-input" id="recipe-search" placeholder="${this._l('recipes_search')}" />
@@ -548,7 +554,7 @@ class MealPlannerCard extends HTMLElement {
               <button class="btn btn-primary btn-sm" id="fixed-add-to-week" style="flex:1">${this._l("shop_fixed_to_week")}</button>
             </div>
           </div>
-        </div>
+        </div>`}
       </ha-card>
 
       <!-- Extra Item Modal -->
@@ -728,7 +734,7 @@ class MealPlannerCard extends HTMLElement {
   _setupListeners() {
     const r = this.shadowRoot;
 
-    // Tabs
+    // Tabs (only in non-readonly)
     r.querySelectorAll(".tab").forEach(tab => {
       tab.addEventListener("click", () => {
         this._activeTab = tab.dataset.tab;
@@ -737,7 +743,7 @@ class MealPlannerCard extends HTMLElement {
       });
     });
 
-    // Planner nav
+    // Planner nav (always available)
     r.getElementById("prev-week").addEventListener("click", () => {
       this._currentWeek = prevWeek(this._currentWeek);
       this._fetchPlanning(this._currentWeek);
@@ -746,6 +752,10 @@ class MealPlannerCard extends HTMLElement {
       this._currentWeek = nextWeek(this._currentWeek);
       this._fetchPlanning(this._currentWeek);
     });
+
+    // Everything below is edit-only — skip in readonly mode
+    if (this._readonly) return;
+
     r.getElementById("copy-prev-week").addEventListener("click", () => {
       const prev = prevWeek(this._currentWeek);
       const prevPlan = this._planning[prev];
@@ -1319,26 +1329,28 @@ class MealPlannerCard extends HTMLElement {
           ${imgHtml}
           <div class="planner-meal-info">
             <div class="planner-meal-name">${recipe.name}</div>
-            <div class="planner-meal-meta">${((recipe.prep_time||0)+(recipe.cook_time||0)) ? `⏱ ${(recipe.prep_time||0)+(recipe.cook_time||0)}m · ` : ""}👤 <input type="number" class="servings-inline" min="1" max="20" value="${dayData.servings||4}" /></div>
+            <div class="planner-meal-meta">${((recipe.prep_time||0)+(recipe.cook_time||0)) ? `⏱ ${(recipe.prep_time||0)+(recipe.cook_time||0)}m · ` : ""}👤 <input type="number" class="servings-inline" min="1" max="20" value="${dayData.servings||4}" ${this._readonly ? "disabled" : ""} /></div>
           </div>
-          <button class="planner-remove-btn">×</button>`;
-        slot.querySelector(".planner-remove-btn").addEventListener("click", e => {
-          e.stopPropagation();
-          const newPlan = JSON.parse(JSON.stringify(plan));
-          newPlan.days[day].dinner = null;
-          this._savePlanning(this._currentWeek, newPlan);
-        });
-        slot.querySelector(".servings-inline").addEventListener("change", e => {
-          e.stopPropagation();
-          const newPlan = JSON.parse(JSON.stringify(plan));
-          newPlan.days[day].servings = parseInt(e.target.value) || 4;
-          this._savePlanning(this._currentWeek, newPlan);
-        });
-        slot.querySelector(".servings-inline").addEventListener("click", e => e.stopPropagation());
+          ${this._readonly ? "" : `<button class="planner-remove-btn">×</button>`}`;
+        if (!this._readonly) {
+          slot.querySelector(".planner-remove-btn").addEventListener("click", e => {
+            e.stopPropagation();
+            const newPlan = JSON.parse(JSON.stringify(plan));
+            newPlan.days[day].dinner = null;
+            this._savePlanning(this._currentWeek, newPlan);
+          });
+          slot.querySelector(".servings-inline").addEventListener("change", e => {
+            e.stopPropagation();
+            const newPlan = JSON.parse(JSON.stringify(plan));
+            newPlan.days[day].servings = parseInt(e.target.value) || 4;
+            this._savePlanning(this._currentWeek, newPlan);
+          });
+          slot.querySelector(".servings-inline").addEventListener("click", e => e.stopPropagation());
+        }
         slot.addEventListener("click", () => this._openDetailModal(recipe));
       } else {
-        slot.innerHTML = `<div class="planner-meal-empty">${this._l("planner_empty")}</div>`;
-        slot.addEventListener("click", () => this._openPickModal(day, "dinner"));
+        slot.innerHTML = `<div class="planner-meal-empty">${this._readonly ? "—" : this._l("planner_empty")}</div>`;
+        if (!this._readonly) slot.addEventListener("click", () => this._openPickModal(day, "dinner"));
       }
       row.appendChild(slot);
 
@@ -1353,10 +1365,12 @@ class MealPlannerCard extends HTMLElement {
       // Note row
       const noteRow = document.createElement("div");
       noteRow.style.cssText = "margin:-4px 0 4px;";
-      noteRow.innerHTML = `<div class="planner-note ${note ? "" : "empty"}" data-day="${day}">
-        ${note ? `📝 ${note}` : this._l("planner_note_empty")}
-      </div>`;
-      noteRow.querySelector(".planner-note").addEventListener("click", () => this._editNote(day, plan, note));
+      if (note || !this._readonly) {
+        noteRow.innerHTML = `<div class="planner-note ${note ? "" : "empty"}" data-day="${day}">
+          ${note ? `📝 ${note}` : this._l("planner_note_empty")}
+        </div>`;
+        if (!this._readonly) noteRow.querySelector(".planner-note").addEventListener("click", () => this._editNote(day, plan, note));
+      }
       grid.appendChild(noteRow);
     });
   }
@@ -1620,6 +1634,42 @@ class MealPlannerCard extends HTMLElement {
     this.shadowRoot.getElementById("detail-modal").classList.add("open");
   }
 }
+
+// ─── CARD EDITOR ──────────────────────────────────────────────
+class MealPlannerCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = config || {};
+    this._render();
+  }
+
+  _render() {
+    const c = this._config;
+    this.innerHTML = `
+      <style>
+        .editor { padding:16px; display:flex; flex-direction:column; gap:14px; font-family:'Segoe UI',system-ui,sans-serif; }
+        .editor label { display:block; font-size:.82em; font-weight:600; color:#5b9bd5; margin-bottom:4px; }
+        .editor input, .editor select { width:100%; padding:8px 10px; border:1px solid #b3d4f0; border-radius:6px; font-size:.9em; background:#f0f7fd; color:#333; box-sizing:border-box; font-family:inherit; }
+        .editor .hint { font-size:.75em; color:#888; margin-top:3px; }
+      </style>
+      <div class="editor">
+        <div>
+          <label>Standaard aantal personen</label>
+          <input type="number" id="default-servings" min="1" max="20" value="${c.default_servings || 4}" />
+          <div class="hint">Wordt gebruikt als standaard bij nieuwe planningsdagen.</div>
+        </div>
+        <div>
+          <label>Taal / Labels</label>
+          <div class="hint">Labels zijn aanpasbaar via YAML (zie README). Visueel bewerken van labels is niet ondersteund.</div>
+        </div>
+      </div>
+    `;
+    this.querySelector("#default-servings").addEventListener("change", e => {
+      this._config = { ...this._config, default_servings: parseInt(e.target.value) || 4 };
+      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config }, bubbles: true, composed: true }));
+    });
+  }
+}
+customElements.define("meal-planner-card-editor", MealPlannerCardEditor);
 
 customElements.define("meal-planner-card", MealPlannerCard);
 window.customCards = window.customCards || [];
