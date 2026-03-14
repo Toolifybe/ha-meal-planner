@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.7.2";
+const MP_VERSION = "1.7.3";
 
 
 const DEFAULT_LABELS = {
@@ -508,7 +508,7 @@ class MealPlannerCard extends HTMLElement {
               <option value="">${this._l("recipes_all_cats")}</option>
               ${this._labels.categories.map(c => `<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join("")}
             </select>
-            <button class="btn btn-secondary btn-sm" id="fav-filter-btn" title="Toon favorieten">⭐</button>
+            <button class="btn btn-secondary btn-sm" id="fav-filter-btn" title="Toon favorieten">❤️</button>
             <button class="btn btn-primary btn-sm" id="add-recipe-btn">${this._l("recipes_add")}</button>
             <button class="btn btn-action-copy" id="import-recipe-btn">${this._l("recipes_import")}</button>
           </div>
