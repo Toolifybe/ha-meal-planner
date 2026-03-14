@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-1.5.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -25,6 +25,8 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 - ✅ **Shopping checklist** with progress bar
 - ➕ **Extra items** with amount, unit and shop category
 - 🌍 **Fully translatable** — all labels configurable via YAML
+- 🗑️ **Remove generated shopping items** — delete items you already have at home
+- 🎨 **Blue UI theme** — consistent blue color palette throughout
 
 ---
 
@@ -262,6 +264,16 @@ labels:
 ---
 
 ## 📋 Changelog
+
+### v1.7.0
+- 🎨 Consistent blue color palette — all grey tones replaced with blue tones throughout the UI
+
+### v1.6.0
+- 🗑️ Delete button on generated shopping list items (remove items you already have at home)
+- 🐛 Fixed ingredient shop category dropdown crash in recipe modal
+
+### v1.5.1
+- 🐛 Fixed recipe edit button not responding due to JS crash in ingredient row
 
 ### v1.5.0
 - 🌍 All labels configurable via `labels:` in card config
