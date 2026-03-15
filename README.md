@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -24,6 +24,7 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 - 👤 **Servings per day** — scales ingredient amounts automatically
 - ✅ **Shopping checklist** with progress bar
 - ➕ **Extra items** with amount, unit and shop category
+- 🍴 **No-cook nights** — quickly plan Restaurant, Takeaway, Bij familie or Restjes without a recipe
 - 🔒 **Readonly mode** — show only the week planner, nothing editable (configurable per dashboard/user)
 - 🌍 **Fully translatable** — all labels configurable via YAML
 - 🗑️ **Remove generated shopping items** — delete items you already have at home
@@ -219,6 +220,8 @@ labels:
     - "drinks"
     - "snacks & sweets"
     - "other"
+  nocook_title: "No cooking tonight"
+  nocook_options: ["🍴 Restaurant", "🥡 Takeaway", "👨‍👩‍👧 Family", "🛋️ Leftovers"]
 ```
 
 ### All available label keys
@@ -286,9 +289,17 @@ labels:
 
 ## 📋 Changelog
 
+### v1.9.0
+- 🍴 No-cook night options in the meal picker (Restaurant, Takeaway, Bij familie, Restjes)
+- Fully translatable via `nocook_options` label
+- No-cook label shown in planner with remove button
+
 ### v1.8.0
 - 🔒 Readonly mode (`readonly: true`) — only shows the week planner, all editing disabled
 - Ideal for restricting access per user via separate HA dashboards
+
+### v1.7.4
+- 🎛️ Visual card editor — configure default servings via the HA dashboard UI
 
 ### v1.7.3
 - 🐛 Favourites filter button changed from ⭐ to ❤️ to match recipe cards

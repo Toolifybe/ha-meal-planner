@@ -3,7 +3,7 @@
  * v1.0.0
  */
 
-const MP_VERSION = "1.8.0";
+const MP_VERSION = "1.9.0";
 
 
 const DEFAULT_LABELS = {
@@ -75,6 +75,10 @@ const DEFAULT_LABELS = {
   // Pick modal
   pick_title:         "Maaltijd kiezen",
   pick_search:        "🔍 Zoeken...",
+
+  // No-cook options
+  nocook_title:       "Geen kookavond",
+  nocook_options:     ["🍴 Restaurant", "🥡 Takeaway", "👨‍👩‍👧 Bij familie", "🛋️ Restjes"],
 
   // General buttons
   btn_save:           "Opslaan",
@@ -341,6 +345,14 @@ const STYLES = `
   .badge-green { background:#e8f5e9; color:#2e7d32; }
   .badge-orange { background:#fff3e0; color:#e65100; }
   .badge-red { background:#ffebee; color:#c62828; }
+  /* No-cook options in pick modal */
+  .nocook-section { margin-bottom:14px; padding-bottom:12px; border-bottom:2px solid #cce0f5; }
+  .nocook-section h4 { font-size:.8em; font-weight:700; color:#5b9bd5; text-transform:uppercase; letter-spacing:.4px; margin:0 0 8px; }
+  .nocook-options { display:flex; flex-wrap:wrap; gap:8px; }
+  .nocook-btn { padding:7px 14px; border:1px solid #b3d4f0; border-radius:20px; background:#f0f7fd; color:#1565c0; font-size:.85em; font-weight:600; cursor:pointer; transition:all .2s; }
+  .nocook-btn:hover { background:#1565c0; color:white; border-color:#1565c0; }
+  /* No-cook slot display */
+  .planner-meal-nocook { flex:1; font-size:.92em; font-weight:600; color:#1565c0; padding:4px 0; }
 `;
 
 class MealPlannerCard extends HTMLElement {
@@ -593,6 +605,14 @@ class MealPlannerCard extends HTMLElement {
       <div class="modal-overlay" id="pick-modal">
         <div class="modal">
           <h3 id="pick-modal-title">${this._l("pick_title")}</h3>
+          <div class="nocook-section">
+            <h4>${this._l("nocook_title")}</h4>
+            <div class="nocook-options" id="nocook-options">
+              ${(this._labels.nocook_options || DEFAULT_LABELS.nocook_options).map(opt =>
+                `<button class="nocook-btn" data-label="${opt}">${opt}</button>`
+              ).join("")}
+            </div>
+          </div>
           <input class="pick-search" id="pick-search" placeholder="${this._l('pick_search')}" />
           <div class="pick-list" id="pick-list"></div>
           <div class="modal-actions">
@@ -883,6 +903,16 @@ class MealPlannerCard extends HTMLElement {
     // Pick modal
     r.getElementById("pick-cancel").addEventListener("click", () => r.getElementById("pick-modal").classList.remove("open"));
     r.getElementById("pick-search").addEventListener("input", e => this._renderPickList(e.target.value.toLowerCase()));
+    r.querySelectorAll(".nocook-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const { day, mealType } = this._pickContext;
+        const plan = JSON.parse(JSON.stringify(this._getPlanning(this._currentWeek)));
+        plan.days[day][mealType] = null;
+        plan.days[day].nocook = btn.dataset.label;
+        this._savePlanning(this._currentWeek, plan);
+        this.shadowRoot.getElementById("pick-modal").classList.remove("open");
+      });
+    });
 
     // Detail modal
     r.getElementById("detail-close").addEventListener("click", () => r.getElementById("detail-modal").classList.remove("open"));
@@ -1320,7 +1350,8 @@ class MealPlannerCard extends HTMLElement {
 
       // Meal slot
       const slot = document.createElement("div");
-      slot.className = "planner-meal-slot" + (recipe ? " filled" : "");
+      const nocook = dayData.nocook || null;
+      slot.className = "planner-meal-slot" + (recipe || nocook ? " filled" : "");
       if (recipe) {
         const imgHtml = recipe.image
           ? `<img src="${recipe.image}" class="planner-meal-img" />`
@@ -1348,6 +1379,21 @@ class MealPlannerCard extends HTMLElement {
           slot.querySelector(".servings-inline").addEventListener("click", e => e.stopPropagation());
         }
         slot.addEventListener("click", () => this._openDetailModal(recipe));
+      } else if (nocook) {
+        slot.innerHTML = `
+          <div class="planner-meal-info">
+            <div class="planner-meal-nocook">${nocook}</div>
+          </div>
+          ${this._readonly ? "" : `<button class="planner-remove-btn">×</button>`}`;
+        if (!this._readonly) {
+          slot.querySelector(".planner-remove-btn").addEventListener("click", e => {
+            e.stopPropagation();
+            const newPlan = JSON.parse(JSON.stringify(plan));
+            newPlan.days[day].nocook = null;
+            this._savePlanning(this._currentWeek, newPlan);
+          });
+          slot.addEventListener("click", () => this._openPickModal(day, "dinner"));
+        }
       } else {
         slot.innerHTML = `<div class="planner-meal-empty">${this._readonly ? "—" : this._l("planner_empty")}</div>`;
         if (!this._readonly) slot.addEventListener("click", () => this._openPickModal(day, "dinner"));
@@ -1580,6 +1626,7 @@ class MealPlannerCard extends HTMLElement {
         const { day, mealType } = this._pickContext;
         const plan = JSON.parse(JSON.stringify(this._getPlanning(this._currentWeek)));
         plan.days[day][mealType] = recipe.id;
+        plan.days[day].nocook = null;
         this._savePlanning(this._currentWeek, plan);
         // Mark as cooked if dinner
         if (mealType === "dinner") {
