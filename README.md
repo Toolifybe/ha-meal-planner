@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.1-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -110,6 +110,10 @@ ha-meal-planner/
 /config/meal_planner_fixed_products.json
 ```
 
+Files are written safely (temporary file first). The previous version is kept as
+`*.json.bak`. If a file is ever damaged, it is copied to `*.json.corrupt-<date>`, the
+`.bak` is used, and nothing gets overwritten.
+
 ---
 
 ## 📡 API Endpoints
@@ -124,7 +128,10 @@ ha-meal-planner/
 | PUT | `/api/meal_planner/planning/{week}` | Save week planning |
 | GET | `/api/meal_planner/shopping/{week}` | Get shopping list |
 | POST | `/api/meal_planner/shopping/{week}` | Generate shopping list |
-| PUT | `/api/meal_planner/shopping/{week}` | Update shopping list |
+| PUT | `/api/meal_planner/shopping/{week}` | Replace shopping list |
+| POST | `/api/meal_planner/shopping/{week}/items` | Add extra items |
+| PUT | `/api/meal_planner/shopping/{week}/item/{id}` | Update one item (e.g. tick off) |
+| DELETE | `/api/meal_planner/shopping/{week}/item/{id}` | Remove one item |
 | GET | `/api/meal_planner/today` | Tonight's dinner |
 | GET | `/api/meal_planner/fixed_products` | Get fixed products |
 | PUT | `/api/meal_planner/fixed_products` | Save fixed products |
@@ -140,6 +147,18 @@ ha-meal-planner/
 |-------|------|----------|-------------|
 | `name` | string | ✅ | Name of the recipe |
 | `description` | string | ❌ | Short description |
+
+### `meal_planner.get_todays_dinner`
+
+Returns tonight's dinner as a response (`recipe`, `nocook`, `note`, `day`, `date`, `week`).
+
+```yaml
+action: meal_planner.get_todays_dinner
+response_variable: dinner
+```
+
+Live updates use the websocket command `meal_planner/subscribe`, which works for
+all users (also non-admin readonly dashboards).
 
 ---
 
@@ -288,6 +307,21 @@ labels:
 ---
 
 ## 📋 Changelog
+
+### v1.9.1
+- 🛡️ Data files are written safely with a `.bak` backup; a damaged file is never treated as empty anymore (could wipe all recipes)
+- 🛡️ Imported recipes can no longer inject code into the dashboard (all text is escaped, only http(s) links)
+- ⚠️ "Copy previous week" no longer wipes the current week when the previous week is empty, and asks before overwriting
+- 🎲 "Random" only fills empty days (asks before replacing a fully planned week) and avoids duplicates
+- ⚠️ Deleting a recipe asks for confirmation (and says how often it is planned)
+- 🐛 `meal_planner.add_recipe` no longer crashes; `meal_planner.get_todays_dinner` now works (returns a response)
+- 🔄 Shopping list, fixed products and ticking off are now live on all devices, and two phones ticking off at once no longer overwrite each other
+- 🔄 Live updates also work for non-admin users (readonly dashboards)
+- 🌙 "Tonight" uses Home Assistant's time zone, shows no-cook nights, and refreshes after midnight
+- 🐛 Adding an extra item after editing a fixed product no longer reuses the product's id; edit title fixed
+- 📥 Import: units like "gram", "eetlepels", "snuifje", fractions (½, 1/2), ranges (2-3), recipes with sections and multi-type JSON-LD
+- 🛒 Ingredients without a usable amount stay on the shopping list; items you removed stay removed when regenerating; ticks are kept
+- ⚠️ Requires Home Assistant 2023.7 or newer
 
 ### v1.9.0
 - 🍴 No-cook night options in the meal picker (Restaurant, Takeaway, Bij familie, Restjes)

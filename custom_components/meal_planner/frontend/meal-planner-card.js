@@ -1,9 +1,9 @@
 /**
  * Meal Planner Card for Home Assistant
- * v1.0.0
+ * v1.9.1
  */
 
-const MP_VERSION = "1.9.0";
+const MP_VERSION = "1.9.1";
 
 
 const DEFAULT_LABELS = {
@@ -71,6 +71,18 @@ const DEFAULT_LABELS = {
   shop_fixed_to_week: "Toevoegen aan weeklijst",
   shop_fixed_empty:   "Nog geen vaste producten.",
   shop_fixed_empty_sub: "Voeg producten toe die je altijd nodig hebt.",
+  extra_edit:         "Item bewerken",
+  fixed_add_title:    "Vast product toevoegen",
+  fixed_edit_title:   "Vast product bewerken",
+
+  // Confirmations
+  confirm_delete_recipe:  "Recept \"{name}\" verwijderen?",
+  confirm_delete_planned: "Het staat nog {n}x ingepland; die dagen worden leeg.",
+  confirm_copy_overwrite: "Deze week is al (deels) ingevuld. Overschrijven met de vorige week?",
+  info_copy_empty:        "De vorige week is leeg, er is niets om te kopiëren.",
+  confirm_random_all:     "Alle dagen zijn al ingepland. Een volledig nieuwe willekeurige week maken?",
+  error_save:             "Opslaan mislukt",
+  error_load:             "Laden mislukt",
 
   // Pick modal
   pick_title:         "Maaltijd kiezen",
@@ -147,11 +159,28 @@ function nextWeek(weekKey) {
   return getWeekKey(next);
 }
 
-function isoToLocalInput(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = n => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// Everything that comes from recipes, imports or users goes through esc()
+// before it lands in innerHTML, so a recipe site cannot inject code.
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+// Only web links (no javascript: etc.)
+function safeUrl(url) {
+  const u = String(url ?? "").trim();
+  return /^https?:\/\//i.test(u) ? u : "";
+}
+
+// Images: web links, uploaded photos (data:image) or local paths
+function safeImg(url) {
+  const u = String(url ?? "").trim();
+  return /^(https?:\/\/|data:image\/|\/(?!\/))/i.test(u) ? u : "";
+}
+
+function weekHasContent(plan) {
+  return Object.values(plan?.days || {}).some(d => d && (d.dinner || d.nocook || d.note));
 }
 
 const STYLES = `
@@ -353,6 +382,9 @@ const STYLES = `
   .nocook-btn:hover { background:#1565c0; color:white; border-color:#1565c0; }
   /* No-cook slot display */
   .planner-meal-nocook { flex:1; font-size:.92em; font-weight:600; color:#1565c0; padding:4px 0; }
+  /* Error banner */
+  .mp-error { display:none; margin:10px 16px 0; padding:8px 12px; border-radius:6px; background:#ffebee; color:#c62828; font-size:.85em; }
+  .mp-error.show { display:block; }
 `;
 
 class MealPlannerCard extends HTMLElement {
@@ -370,6 +402,7 @@ class MealPlannerCard extends HTMLElement {
     this._initialized = false;
     this._recipeFilter = "";
     this._recipeCategoryFilter = "";
+    this._lastDay = new Date().toDateString();
   }
 
   set hass(hass) {
@@ -378,8 +411,86 @@ class MealPlannerCard extends HTMLElement {
       this._initialized = true;
       this._render();
       this._fetchAll();
-      hass.connection.subscribeEvents(() => this._fetchAll(), "meal_planner_updated");
     }
+    if (this.isConnected) this._subscribe();
+  }
+
+  connectedCallback() {
+    if (this._hass) this._subscribe();
+    // Midnight / tablet that stayed on: refresh "tonight" and today's row
+    this._dayTimer = setInterval(() => this._checkDayChange(), 60000);
+    this._onVisible = () => { if (document.visibilityState === "visible" && this._hass) this._fetchAll(); };
+    document.addEventListener("visibilitychange", this._onVisible);
+  }
+
+  disconnectedCallback() {
+    this._unsubscribe();
+    clearInterval(this._dayTimer);
+    document.removeEventListener("visibilitychange", this._onVisible);
+  }
+
+  // Live updates. meal_planner/subscribe works for every user; plain
+  // subscribeEvents only for admins (fallback for an older integration).
+  _subscribe() {
+    if (this._unsub || this._subscribing) return;
+    this._subscribing = true;
+    const conn = this._hass.connection;
+    const onEvent = data => this._onUpdate(data || {});
+    conn.subscribeMessage(onEvent, { type: "meal_planner/subscribe" })
+      .catch(() => conn.subscribeEvents(ev => onEvent(ev.data), "meal_planner_updated"))
+      .then(unsub => {
+        this._subscribing = false;
+        if (!this.isConnected) { unsub(); return; }
+        this._unsub = unsub;
+      })
+      .catch(e => { this._subscribing = false; console.warn("MP: no live updates", e); });
+  }
+
+  _unsubscribe() {
+    if (this._unsub) { try { this._unsub(); } catch (e) {} }
+    this._unsub = null;
+  }
+
+  _onUpdate(data) {
+    switch (data.what) {
+      case "planning":
+        if (!data.week || data.week === this._currentWeek) this._fetchPlanning(this._currentWeek);
+        this._fetchToday();
+        break;
+      case "shopping":
+        if (!data.week || data.week === this._shoppingWeek) this._fetchShopping(this._shoppingWeek);
+        break;
+      case "fixed":
+        this._fetchFixedProducts();
+        break;
+      case "recipes":
+        this._fetchRecipes().then(() => { this._renderPlanner(); this._fetchToday(); });
+        break;
+      default:
+        this._fetchAll();
+    }
+  }
+
+  _checkDayChange() {
+    const today = new Date().toDateString();
+    if (this._lastDay && this._lastDay !== today) {
+      const oldWeek = getWeekKey(new Date(this._lastDay));
+      if (this._currentWeek === oldWeek) this._currentWeek = getWeekKey();
+      if (this._shoppingWeek === oldWeek) this._shoppingWeek = getWeekKey();
+      this._fetchAll();
+    }
+    this._lastDay = today;
+  }
+
+  _showError(prefix, e) {
+    const el = this.shadowRoot?.getElementById("mp-error");
+    console.error("MP:", prefix, e);
+    if (!el) return;
+    const detail = e?.body?.error || e?.body?.message || e?.error || e?.message || "";
+    el.textContent = `⚠️ ${prefix}${detail ? ": " + detail : ""}`;
+    el.classList.add("show");
+    clearTimeout(this._errTimer);
+    this._errTimer = setTimeout(() => el.classList.remove("show"), 8000);
   }
 
   setConfig(config) {
@@ -415,7 +526,7 @@ class MealPlannerCard extends HTMLElement {
     try {
       this._recipes = await this._hass.callApi("GET", "meal_planner/recipes");
       this._renderRecipes();
-    } catch(e) { console.error("MP recipes error:", e); }
+    } catch(e) { this._showError(this._l("error_load"), e); }
   }
 
   async _fetchPlanning(week) {
@@ -423,14 +534,14 @@ class MealPlannerCard extends HTMLElement {
       this._planning[week] = await this._hass.callApi("GET", `meal_planner/planning/${week}`);
       this._renderPlanner();
       return this._planning[week];
-    } catch(e) { console.error("MP planning error:", e); }
+    } catch(e) { this._showError(this._l("error_load"), e); }
   }
 
   async _fetchShopping(week) {
     try {
       this._shopping[week] = await this._hass.callApi("GET", `meal_planner/shopping/${week}`);
       this._renderShopping();
-    } catch(e) { console.error("MP shopping error:", e); }
+    } catch(e) { this._showError(this._l("error_load"), e); }
   }
 
   async _fetchToday() {
@@ -438,7 +549,7 @@ class MealPlannerCard extends HTMLElement {
       const res = await this._hass.callApi("GET", "meal_planner/today");
       this._todayRecipe = res;
       this._renderToday();
-    } catch(e) {}
+    } catch(e) { console.error("MP today error:", e); }
   }
 
   async _savePlanning(week, data) {
@@ -446,7 +557,8 @@ class MealPlannerCard extends HTMLElement {
       await this._hass.callApi("PUT", `meal_planner/planning/${week}`, data);
       this._planning[week] = data;
       this._renderPlanner();
-    } catch(e) { console.error("MP save planning error:", e); }
+      this._fetchToday();
+    } catch(e) { this._showError(this._l("error_save"), e); }
   }
 
   async _saveRecipe(data, id = null) {
@@ -457,29 +569,44 @@ class MealPlannerCard extends HTMLElement {
         await this._hass.callApi("POST", "meal_planner/recipes", data);
       }
       await this._fetchRecipes();
-    } catch(e) { console.error("MP save recipe error:", e); }
+    } catch(e) { this._showError(this._l("error_save"), e); }
   }
 
   async _deleteRecipe(id) {
     try {
       await this._hass.callApi("DELETE", `meal_planner/recipes/${id}`);
       await this._fetchRecipes();
-    } catch(e) {}
+      this._renderPlanner();
+    } catch(e) { this._showError(this._l("error_save"), e); }
   }
 
   async _generateShopping(week) {
     try {
       this._shopping[week] = await this._hass.callApi("POST", `meal_planner/shopping/${week}`, {});
       this._renderShopping();
-    } catch(e) { console.error("MP shopping generate error:", e); }
+    } catch(e) { this._showError(this._l("error_save"), e); }
   }
 
-  async _saveShopping(week, data) {
+  // Shopping changes go per item, so two phones ticking off at the same
+  // time no longer overwrite each other. The server returns the fresh week.
+  async _shopCall(week, method, path, data) {
     try {
-      await this._hass.callApi("PUT", `meal_planner/shopping/${week}`, data);
-      this._shopping[week] = data;
+      const res = await this._hass.callApi(method, `meal_planner/shopping/${week}${path}`, data);
+      this._shopping[week] = res;
       this._renderShopping();
-    } catch(e) {}
+    } catch(e) {
+      this._showError(this._l("error_save"), e);
+      this._fetchShopping(week);
+    }
+  }
+  _shopAddItems(week, items, skipExisting = false) {
+    return this._shopCall(week, "POST", "/items", { items, skip_existing: skipExisting });
+  }
+  _shopUpdateItem(week, id, fields) {
+    return this._shopCall(week, "PUT", `/item/${encodeURIComponent(id)}`, fields);
+  }
+  _shopDeleteItem(week, id) {
+    return this._shopCall(week, "DELETE", `/item/${encodeURIComponent(id)}`);
   }
 
   _recipesMap() {
@@ -496,6 +623,7 @@ class MealPlannerCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLES}</style>
       <ha-card>
+        <div class="mp-error" id="mp-error"></div>
         ${ro ? "" : `
         <div class="tabs">
           <button class="tab active" data-tab="planner">📅 ${this._l("tab_planner")}</button>
@@ -524,7 +652,7 @@ class MealPlannerCard extends HTMLElement {
             <input class="search-input" id="recipe-search" placeholder="${this._l('recipes_search')}" />
             <select class="filter-select" id="recipe-cat-filter">
               <option value="">${this._l("recipes_all_cats")}</option>
-              ${this._labels.categories.map(c => `<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join("")}
+              ${this._labels.categories.map(c => `<option value="${esc(c)}">${esc(c.charAt(0).toUpperCase()+c.slice(1))}</option>`).join("")}
             </select>
             <button class="btn btn-secondary btn-sm" id="fav-filter-btn" title="Toon favorieten">❤️</button>
             <button class="btn btn-primary btn-sm" id="add-recipe-btn">${this._l("recipes_add")}</button>
@@ -590,7 +718,7 @@ class MealPlannerCard extends HTMLElement {
           <div class="form-group">
             <label>Winkelcategorie</label>
             <select id="ei-category">
-              ${this._labels.shop_categories.map(c => `<option value="${c}">${c}</option>`).join("")}
+              ${this._labels.shop_categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}
             </select>
           </div>
           <div class="modal-actions">
@@ -609,7 +737,7 @@ class MealPlannerCard extends HTMLElement {
             <h4>${this._l("nocook_title")}</h4>
             <div class="nocook-options" id="nocook-options">
               ${(this._labels.nocook_options || DEFAULT_LABELS.nocook_options).map(opt =>
-                `<button class="nocook-btn" data-label="${opt}">${opt}</button>`
+                `<button class="nocook-btn" data-label="${esc(opt)}">${esc(opt)}</button>`
               ).join("")}
             </div>
           </div>
@@ -652,7 +780,7 @@ class MealPlannerCard extends HTMLElement {
             <div class="form-group">
               <label>${this._l("recipe_category")}</label>
               <select id="rm-category">
-                ${this._labels.categories.map(c => `<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join("")}
+                ${this._labels.categories.map(c => `<option value="${esc(c)}">${esc(c.charAt(0).toUpperCase()+c.slice(1))}</option>`).join("")}
               </select>
             </div>
           </div>
@@ -776,26 +904,38 @@ class MealPlannerCard extends HTMLElement {
     // Everything below is edit-only — skip in readonly mode
     if (this._readonly) return;
 
-    r.getElementById("copy-prev-week").addEventListener("click", () => {
-      const prev = prevWeek(this._currentWeek);
-      const prevPlan = this._planning[prev];
-      if (prevPlan) {
-        this._savePlanning(this._currentWeek, JSON.parse(JSON.stringify(prevPlan)));
-      } else {
-        (async () => {
-          await this._fetchPlanning(prev);
-          const p = this._planning[prev];
-          if (p) this._savePlanning(this._currentWeek, JSON.parse(JSON.stringify(p)));
-        })();
-      }
+    r.getElementById("copy-prev-week").addEventListener("click", async () => {
+      const week = this._currentWeek;
+      const prev = prevWeek(week);
+      // Always fetch fresh: an empty previous week must never wipe this one
+      let prevPlan;
+      try {
+        prevPlan = await this._hass.callApi("GET", `meal_planner/planning/${prev}`);
+      } catch (e) { this._showError(this._l("error_load"), e); return; }
+      if (!weekHasContent(prevPlan)) { alert(this._l("info_copy_empty")); return; }
+      if (weekHasContent(this._getPlanning(week)) && !confirm(this._l("confirm_copy_overwrite"))) return;
+      this._planning[prev] = prevPlan;
+      this._savePlanning(week, JSON.parse(JSON.stringify(prevPlan)));
     });
     r.getElementById("random-dinners").addEventListener("click", () => {
       const plan = JSON.parse(JSON.stringify(this._getPlanning(this._currentWeek)));
       const dinnerRecipes = this._recipes.filter(r => r.category === "avondeten" || !r.category);
       if (!dinnerRecipes.length) return;
-      DAYS_NL.forEach(day => {
-        const rand = dinnerRecipes[Math.floor(Math.random() * dinnerRecipes.length)];
+      DAYS_NL.forEach(day => { plan.days[day] = plan.days[day] || { dinner: null, servings: 4 }; });
+      // Only fill empty days; planned days and no-cook nights stay
+      let days = DAYS_NL.filter(day => !plan.days[day].dinner && !plan.days[day].nocook);
+      if (!days.length) {
+        if (!confirm(this._l("confirm_random_all"))) return;
+        days = DAYS_NL;
+      }
+      // Avoid the same recipe twice in a week as long as there are enough
+      const used = new Set(DAYS_NL.filter(d => !days.includes(d)).map(d => plan.days[d].dinner).filter(Boolean));
+      let pool = dinnerRecipes.filter(rc => !used.has(rc.id));
+      days.forEach(day => {
+        if (!pool.length) pool = [...dinnerRecipes];
+        const rand = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
         plan.days[day].dinner = rand.id;
+        plan.days[day].nocook = null;
       });
       this._savePlanning(this._currentWeek, plan);
     });
@@ -894,10 +1034,17 @@ class MealPlannerCard extends HTMLElement {
     });
     r.getElementById("rm-save").addEventListener("click", () => this._saveRecipeFromModal());
     r.getElementById("rm-delete").addEventListener("click", () => {
-      if (this._editingRecipe) {
-        this._deleteRecipe(this._editingRecipe.id);
-        r.getElementById("recipe-modal").classList.remove("open");
-      }
+      const recipe = this._editingRecipe;
+      if (!recipe?.id) return;
+      // How often is it planned in the weeks we have loaded?
+      const planned = Object.values(this._planning)
+        .flatMap(p => Object.values(p?.days || {}))
+        .filter(d => d && d.dinner === recipe.id).length;
+      let msg = this._l("confirm_delete_recipe").replace("{name}", recipe.name || "");
+      if (planned) msg += "\n" + this._l("confirm_delete_planned").replace("{n}", planned);
+      if (!confirm(msg)) return;
+      this._deleteRecipe(recipe.id);
+      r.getElementById("recipe-modal").classList.remove("open");
     });
 
     // Pick modal
@@ -927,7 +1074,7 @@ class MealPlannerCard extends HTMLElement {
     const chip = document.createElement("span");
     chip.className = "tag-chip";
     chip.dataset.value = text;
-    chip.innerHTML = `${text}<button type="button">×</button>`;
+    chip.innerHTML = `${esc(text)}<button type="button">×</button>`;
     chip.querySelector("button").addEventListener("click", () => chip.remove());
     wrap.insertBefore(chip, wrap.querySelector("input"));
   }
@@ -944,13 +1091,13 @@ class MealPlannerCard extends HTMLElement {
     row.draggable = true;
     row.innerHTML = `
       <span class="drag-handle" title="Versleep om te herordenen">⠿</span>
-      <input type="text" placeholder="${this._l('recipe_ing_name')}" value="${ing.name || ""}" class="ing-name" />
+      <input type="text" placeholder="${this._l('recipe_ing_name')}" value="${esc(ing.name)}" class="ing-name" />
       <button type="button" style="background:none;border:none;cursor:pointer;color:#e53935;font-size:15px;padding:0;line-height:1;">🗑</button>
       <div class="ing-row-sub">
-        <input type="number" placeholder="0" value="${ing.amount || ""}" class="ing-amount" min="0" step="0.1" />
-        <input type="text" placeholder="${this._l('recipe_ing_unit')}" value="${ing.unit || ""}" class="ing-unit" />
+        <input type="number" placeholder="0" value="${esc(ing.amount || "")}" class="ing-amount" min="0" step="0.1" />
+        <input type="text" placeholder="${this._l('recipe_ing_unit')}" value="${esc(ing.unit)}" class="ing-unit" />
         <select class="ing-shopcat">
-          ${this._labels.shop_categories.map(c => `<option value="${c}" ${ing.shop_category === c ? "selected" : ""}>${c}</option>`).join("")}
+          ${this._labels.shop_categories.map(c => `<option value="${esc(c)}" ${ing.shop_category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}
         </select>
       </div>
     `;
@@ -992,7 +1139,7 @@ class MealPlannerCard extends HTMLElement {
     const num = container.children.length + 1;
     const row = document.createElement("div");
     row.className = "step-row";
-    row.innerHTML = `<div class="step-num">${num}</div><textarea placeholder="Beschrijf stap ${num}...">${text}</textarea><button type="button">🗑</button>`;
+    row.innerHTML = `<div class="step-num">${num}</div><textarea placeholder="Beschrijf stap ${num}...">${esc(text)}</textarea><button type="button">🗑</button>`;
     row.querySelector("button").addEventListener("click", () => {
       row.remove();
       // renumber
@@ -1040,7 +1187,7 @@ class MealPlannerCard extends HTMLElement {
     try {
       const result = await this._hass.callApi("POST", "meal_planner/import_recipe", { url });
       if (result.error) {
-        status.innerHTML = `<span style="color:#e53935">❌ ${result.error}</span>`;
+        status.innerHTML = `<span style="color:#e53935">❌ ${esc(result.error)}</span>`;
         btn.disabled = false;
         return;
       }
@@ -1118,6 +1265,7 @@ class MealPlannerCard extends HTMLElement {
   _openExtraModal(item = null) {
     const r = this.shadowRoot;
     this._editingExtraItem = item;
+    this._editingFixedProduct = null;
     r.getElementById("extra-modal-title").textContent = item ? this._l("extra_edit") : this._l("shop_extra_add");
     r.getElementById("ei-name").value = item?.name || "";
     r.getElementById("ei-amount").value = item?.amount || "";
@@ -1135,8 +1283,9 @@ class MealPlannerCard extends HTMLElement {
     if (!name) { r.getElementById("ei-name").style.borderColor = "red"; return; }
     r.getElementById("ei-name").style.borderColor = "";
     const mode = this._modalMode || "extra";
+    const editing = mode === "fixed" ? this._editingFixedProduct : this._editingExtraItem;
     const itemData = {
-      id: (this._editingExtraItem || this._editingFixedProduct)?.id || (mode === "fixed" ? "f_" : "e_") + Date.now(),
+      id: editing?.id || (mode === "fixed" ? "f_" : "e_") + Date.now(),
       name,
       amount: parseFloat(r.getElementById("ei-amount").value) || 0,
       unit: r.getElementById("ei-unit").value.trim(),
@@ -1157,15 +1306,10 @@ class MealPlannerCard extends HTMLElement {
       this._saveFixedProducts(products);
     } else {
       const week = this._shoppingWeek;
-      const shopping = JSON.parse(JSON.stringify(this._shopping[week] || { items: [], extra_items: [] }));
-      shopping.extra_items = shopping.extra_items || [];
-      if (this._editingExtraItem) {
-        const idx = shopping.extra_items.findIndex(i => i.id === this._editingExtraItem.id);
-        if (idx >= 0) shopping.extra_items[idx] = itemData;
-      } else {
-        shopping.extra_items.push(itemData);
-      }
-      this._saveShopping(week, shopping);
+      const { id, ...fields } = itemData;
+      if (this._editingExtraItem) this._shopUpdateItem(week, this._editingExtraItem.id, fields);
+      else this._shopAddItems(week, [fields]);
+      this._editingExtraItem = null;
     }
   }
 
@@ -1180,10 +1324,8 @@ class MealPlannerCard extends HTMLElement {
       this._saveFixedProducts(products);
     } else {
       if (!this._editingExtraItem) return;
-      const week = this._shoppingWeek;
-      const shopping = JSON.parse(JSON.stringify(this._shopping[week] || { items: [], extra_items: [] }));
-      shopping.extra_items = (shopping.extra_items || []).filter(i => i.id !== this._editingExtraItem.id);
-      this._saveShopping(week, shopping);
+      this._shopDeleteItem(this._shoppingWeek, this._editingExtraItem.id);
+      this._editingExtraItem = null;
     }
   }
 
@@ -1192,7 +1334,7 @@ class MealPlannerCard extends HTMLElement {
       const res = await this._hass.callApi("GET", "meal_planner/fixed_products");
       this._fixedProducts = res || [];
       this._renderFixedProducts();
-    } catch(e) { this._fixedProducts = []; }
+    } catch(e) { this._showError(this._l("error_load"), e); }
   }
 
   async _saveFixedProducts(products) {
@@ -1200,7 +1342,7 @@ class MealPlannerCard extends HTMLElement {
       await this._hass.callApi("PUT", "meal_planner/fixed_products", products);
       this._fixedProducts = products;
       this._renderFixedProducts();
-    } catch(e) { console.error("MP fixed products error:", e); }
+    } catch(e) { this._showError(this._l("error_save"), e); }
   }
 
   _renderFixedProducts() {
@@ -1220,7 +1362,7 @@ class MealPlannerCard extends HTMLElement {
     Object.keys(grouped).sort().forEach(cat => {
       const section = document.createElement("div");
       section.className = "shop-category-section";
-      section.innerHTML = `<div class="shop-cat-header">📦 ${cat}</div>`;
+      section.innerHTML = `<div class="shop-cat-header">📦 ${esc(cat)}</div>`;
       grouped[cat].forEach(item => {
         const row = document.createElement("div");
         row.className = "shop-item";
@@ -1228,10 +1370,10 @@ class MealPlannerCard extends HTMLElement {
         const checked = (this._fixedChecked || new Set()).has(item.id);
         row.innerHTML = `
           <input type="checkbox" ${checked ? "checked" : ""} style="width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--primary-color);" />
-          <span class="item-name" style="flex:1">${item.name}</span>
-          ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}
+          <span class="item-name" style="flex:1">${esc(item.name)}</span>
+          ${amtStr ? `<span class="item-amount">${esc(amtStr)}</span>` : ""}
           <button class="edit-fixed-btn" title="Bewerken" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:var(--primary-text-color);">✏️</button>
-          <button class="del-fixed-btn" title=this._l("btn_delete") style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:#e53935;">🗑️</button>`;
+          <button class="del-fixed-btn" title="${esc(this._l("btn_delete"))}" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:#e53935;">🗑️</button>`;
         const cb = row.querySelector("input");
         cb.addEventListener("change", e => {
           if (!this._fixedChecked) this._fixedChecked = new Set();
@@ -1255,24 +1397,16 @@ class MealPlannerCard extends HTMLElement {
       return;
     }
     const week = this._shoppingWeek;
-    const shopping = JSON.parse(JSON.stringify(this._shopping[week] || { items: [], extra_items: [] }));
-    shopping.extra_items = shopping.extra_items || [];
-    const selected = this._fixedProducts.filter(p => this._fixedChecked.has(p.id));
-    selected.forEach(p => {
-      const alreadyExists = shopping.extra_items.some(i => i.name.toLowerCase() === p.name.toLowerCase());
-      if (!alreadyExists) {
-        shopping.extra_items.push({
-          id: "e_" + Date.now() + "_" + Math.random().toString(36).slice(2,6),
-          name: p.name,
-          amount: p.amount || 0,
-          unit: p.unit || "",
-          shop_category: p.shop_category || "overige",
-          checked: false,
-        });
-      }
-    });
+    const selected = this._fixedProducts
+      .filter(p => this._fixedChecked.has(p.id))
+      .map(p => ({
+        name: p.name,
+        amount: p.amount || 0,
+        unit: p.unit || "",
+        shop_category: p.shop_category || "overige",
+      }));
     this._fixedChecked = new Set();
-    await this._saveShopping(week, shopping);
+    await this._shopAddItems(week, selected, true);
     // Switch to week tab to show result
     const r = this.shadowRoot;
     r.getElementById("subtab-week").style.display = "";
@@ -1287,7 +1421,7 @@ class MealPlannerCard extends HTMLElement {
     this._editingExtraItem = null;
     this._modalMode = "fixed";
     const r = this.shadowRoot;
-    r.getElementById("extra-modal-title").textContent = item ? "Vast product bewerken" : "Vast product toevoegen";
+    r.getElementById("extra-modal-title").textContent = item ? this._l("fixed_edit_title") : this._l("fixed_add_title");
     r.getElementById("ei-name").value = item?.name || "";
     r.getElementById("ei-amount").value = item?.amount || "";
     r.getElementById("ei-unit").value = item?.unit || "";
@@ -1302,19 +1436,23 @@ class MealPlannerCard extends HTMLElement {
     const widget = this.shadowRoot.getElementById("today-widget");
     if (!widget) return;
     const data = this._todayRecipe;
-    if (!data?.recipe) { widget.innerHTML = ""; return; }
-    const recipe = data.recipe;
-    const imgHtml = recipe.image
-      ? `<div class="today-img"><img src="${recipe.image}" /></div>`
+    const recipe = data?.recipe;
+    if (!recipe && !data?.nocook) { widget.innerHTML = ""; return; }
+    const img = safeImg(recipe?.image);
+    const imgHtml = img
+      ? `<div class="today-img"><img src="${esc(img)}" /></div>`
       : `<div class="today-img" style="display:flex;align-items:center;justify-content:center;">🍽️</div>`;
-    const total = (recipe.prep_time || 0) + (recipe.cook_time || 0);
+    const total = recipe ? (recipe.prep_time || 0) + (recipe.cook_time || 0) : 0;
+    const meta = recipe
+      ? `${total ? `⏱ ${total} min` : ""} ${recipe.servings ? `· 👤 ${esc(recipe.servings)} pers.` : ""}`
+      : "";
     widget.innerHTML = `
       <div class="today-card">
-        ${imgHtml}
+        ${recipe ? imgHtml : ""}
         <div class="today-info">
-          <div class="today-label">🌙 Vanavond</div>
-          <div class="today-name">${recipe.name}</div>
-          <div class="today-meta">${total ? `⏱ ${total} min` : ""} ${recipe.servings ? `· 👤 ${recipe.servings} pers.` : ""}</div>
+          <div class="today-label">${esc(this._l("planner_tonight"))}</div>
+          <div class="today-name">${esc(recipe ? recipe.name : data.nocook)}</div>
+          ${meta.trim() ? `<div class="today-meta">${meta}</div>` : ""}
         </div>
       </div>`;
   }
@@ -1353,14 +1491,14 @@ class MealPlannerCard extends HTMLElement {
       const nocook = dayData.nocook || null;
       slot.className = "planner-meal-slot" + (recipe || nocook ? " filled" : "");
       if (recipe) {
-        const imgHtml = recipe.image
-          ? `<img src="${recipe.image}" class="planner-meal-img" />`
+        const imgHtml = safeImg(recipe.image)
+          ? `<img src="${esc(safeImg(recipe.image))}" class="planner-meal-img" />`
           : `<div class="planner-meal-img planner-meal-emoji">🍽️</div>`;
         slot.innerHTML = `
           ${imgHtml}
           <div class="planner-meal-info">
-            <div class="planner-meal-name">${recipe.name}</div>
-            <div class="planner-meal-meta">${((recipe.prep_time||0)+(recipe.cook_time||0)) ? `⏱ ${(recipe.prep_time||0)+(recipe.cook_time||0)}m · ` : ""}👤 <input type="number" class="servings-inline" min="1" max="20" value="${dayData.servings||4}" ${this._readonly ? "disabled" : ""} /></div>
+            <div class="planner-meal-name">${esc(recipe.name)}</div>
+            <div class="planner-meal-meta">${((recipe.prep_time||0)+(recipe.cook_time||0)) ? `⏱ ${(recipe.prep_time||0)+(recipe.cook_time||0)}m · ` : ""}👤 <input type="number" class="servings-inline" min="1" max="20" value="${esc(dayData.servings||4)}" ${this._readonly ? "disabled" : ""} /></div>
           </div>
           ${this._readonly ? "" : `<button class="planner-remove-btn">×</button>`}`;
         if (!this._readonly) {
@@ -1382,7 +1520,7 @@ class MealPlannerCard extends HTMLElement {
       } else if (nocook) {
         slot.innerHTML = `
           <div class="planner-meal-info">
-            <div class="planner-meal-nocook">${nocook}</div>
+            <div class="planner-meal-nocook">${esc(nocook)}</div>
           </div>
           ${this._readonly ? "" : `<button class="planner-remove-btn">×</button>`}`;
         if (!this._readonly) {
@@ -1413,7 +1551,7 @@ class MealPlannerCard extends HTMLElement {
       noteRow.style.cssText = "margin:-4px 0 4px;";
       if (note || !this._readonly) {
         noteRow.innerHTML = `<div class="planner-note ${note ? "" : "empty"}" data-day="${day}">
-          ${note ? `📝 ${note}` : this._l("planner_note_empty")}
+          ${note ? `📝 ${esc(note)}` : esc(this._l("planner_note_empty"))}
         </div>`;
         if (!this._readonly) noteRow.querySelector(".planner-note").addEventListener("click", () => this._editNote(day, plan, note));
       }
@@ -1449,30 +1587,30 @@ class MealPlannerCard extends HTMLElement {
     });
 
     if (!recipes.length) {
-      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📖</div><p>Geen recepten gevonden.<br>Klik op ${this._l("recipes_empty_sub")}</p></div>`;
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📖</div><p>${esc(this._l("recipes_empty"))}<br>${esc(this._l("recipes_empty_sub"))}</p></div>`;
       return;
     }
     grid.innerHTML = "";
     recipes.forEach(recipe => {
       const card = document.createElement("div");
       card.className = "recipe-card";
-      const imgHtml = recipe.image
-        ? `<div class="recipe-img"><img src="${recipe.image}" /></div>`
+      const imgHtml = safeImg(recipe.image)
+        ? `<div class="recipe-img"><img src="${esc(safeImg(recipe.image))}" /></div>`
         : `<div class="recipe-img" style="display:flex;align-items:center;justify-content:center;">🍽️</div>`;
       const total = (recipe.prep_time || 0) + (recipe.cook_time || 0);
       const diffBadge = recipe.difficulty === "easy" ? "badge-green" : recipe.difficulty === "hard" ? "badge-red" : "badge-orange";
       card.innerHTML = `
         ${imgHtml}
         <div class="recipe-info">
-          <div class="recipe-name">${recipe.name}</div>
+          <div class="recipe-name">${esc(recipe.name)}</div>
           <div class="recipe-meta">
             ${total ? `<span>⏱ ${total}m</span>` : ""}
-            <span>👤 ${recipe.servings || 4}</span>
-            <span class="badge ${diffBadge}">${(this._labels["diff_" + recipe.difficulty] || this._l("diff_medium")) || "Gemiddeld"}</span>
+            <span>👤 ${esc(recipe.servings || 4)}</span>
+            <span class="badge ${diffBadge}">${esc(this._labels["diff_" + recipe.difficulty] || this._l("diff_medium"))}</span>
           </div>
-          ${recipe.tags?.length ? `<div style="margin-top:5px;display:flex;gap:3px;flex-wrap:wrap">${recipe.tags.slice(0,3).map(t=>`<span class="recipe-tag">${t}</span>`).join("")}</div>` : ""}
+          ${recipe.tags?.length ? `<div style="margin-top:5px;display:flex;gap:3px;flex-wrap:wrap">${recipe.tags.slice(0,3).map(t=>`<span class="recipe-tag">${esc(t)}</span>`).join("")}</div>` : ""}
           <div class="recipe-actions-row" style="justify-content:space-between;align-items:center;">
-            <div class="star-display">${"⭐".repeat(recipe.rating||0)}${"☆".repeat(5-(recipe.rating||0))}</div>
+            <div class="star-display">${"⭐".repeat(Math.max(0, Math.min(5, recipe.rating|0)))}${"☆".repeat(5 - Math.max(0, Math.min(5, recipe.rating|0)))}</div>
             <div style="display:flex;gap:4px;">
               <button class="fav-btn ${recipe.favourite ? "active" : ""}" title="Favoriet">❤️</button>
               <button class="btn btn-secondary btn-sm edit-btn">✏️</button>
@@ -1544,7 +1682,7 @@ class MealPlannerCard extends HTMLElement {
     cats.forEach(cat => {
       const section = document.createElement("div");
       section.className = "shop-category-section";
-      section.innerHTML = `<div class="shop-cat-header">📦 ${cat}</div>`;
+      section.innerHTML = `<div class="shop-cat-header">📦 ${esc(cat)}</div>`;
       grouped[cat].forEach(item => {
         const isExtra = item.id && item.id.startsWith("e_");
         const row = document.createElement("div");
@@ -1552,17 +1690,13 @@ class MealPlannerCard extends HTMLElement {
         const amtStr = item.amount ? `${item.amount} ${item.unit || ""}`.trim() : "";
         row.innerHTML = `
           <input type="checkbox" ${item.checked ? "checked" : ""} />
-          <span class="item-name">${item.name}</span>
-          ${amtStr ? `<span class="item-amount">${amtStr}</span>` : ""}
+          <span class="item-name">${esc(item.name)}</span>
+          ${amtStr ? `<span class="item-amount">${esc(amtStr)}</span>` : ""}
           ${isExtra ? `<button class="edit-extra-btn" title="Bewerken" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:var(--primary-text-color);flex-shrink:0;">✏️</button>` : ""}
           <button class="del-item-btn" title="Verwijderen" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.4;color:#e53935;flex-shrink:0;">🗑️</button>`;
         row.querySelector("input").addEventListener("change", e => {
-          const newChecked = e.target.checked;
-          const newShopping = JSON.parse(JSON.stringify(shopping));
-          [...(newShopping.items || []), ...(newShopping.extra_items || [])].forEach(i => {
-            if (i.id === item.id) i.checked = newChecked;
-          });
-          this._saveShopping(week, newShopping);
+          row.classList.toggle("checked", e.target.checked);
+          this._shopUpdateItem(week, item.id, { checked: e.target.checked });
         });
         if (isExtra) {
           row.querySelector(".edit-extra-btn").addEventListener("click", e => {
@@ -1572,13 +1706,8 @@ class MealPlannerCard extends HTMLElement {
         }
         row.querySelector(".del-item-btn").addEventListener("click", e => {
           e.stopPropagation();
-          const newShopping = JSON.parse(JSON.stringify(shopping));
-          if (isExtra) {
-            newShopping.extra_items = (newShopping.extra_items || []).filter(i => i.id !== item.id);
-          } else {
-            newShopping.items = (newShopping.items || []).filter(i => i.id !== item.id);
-          }
-          this._saveShopping(week, newShopping);
+          row.remove();
+          this._shopDeleteItem(week, item.id);
         });
         section.appendChild(row);
       });
@@ -1612,15 +1741,15 @@ class MealPlannerCard extends HTMLElement {
     recipes.forEach(recipe => {
       const item = document.createElement("div");
       item.className = "pick-item";
-      const thumbHtml = recipe.image
-        ? `<div class="pick-thumb"><img src="${recipe.image}" /></div>`
+      const thumbHtml = safeImg(recipe.image)
+        ? `<div class="pick-thumb"><img src="${esc(safeImg(recipe.image))}" /></div>`
         : `<div class="pick-thumb" style="display:flex;align-items:center;justify-content:center;">🍽️</div>`;
       const total = (recipe.prep_time || 0) + (recipe.cook_time || 0);
       item.innerHTML = `
         ${thumbHtml}
         <div>
-          <div class="pick-name">${recipe.name}</div>
-          <div class="pick-meta">${recipe.category || ""} ${total ? `· ⏱ ${total}m` : ""} · 👤 ${recipe.servings || 4}</div>
+          <div class="pick-name">${esc(recipe.name)}</div>
+          <div class="pick-meta">${esc(recipe.category || "")} ${total ? `· ⏱ ${total}m` : ""} · 👤 ${esc(recipe.servings || 4)}</div>
         </div>`;
       item.addEventListener("click", () => {
         const { day, mealType } = this._pickContext;
@@ -1645,26 +1774,26 @@ class MealPlannerCard extends HTMLElement {
     const total = (recipe.prep_time || 0) + (recipe.cook_time || 0);
     const diffBadge = recipe.difficulty === "easy" ? "badge-green" : recipe.difficulty === "hard" ? "badge-red" : "badge-orange";
     content.innerHTML = `
-      ${recipe.image ? `<img src="${recipe.image}" class="recipe-detail-img" />` : ""}
-      <h3 style="margin:0 0 8px">${recipe.name}</h3>
-      ${recipe.description ? `<p style="color:var(--secondary-text-color);font-size:.88em;margin:0 0 10px">${recipe.description}</p>` : ""}
+      ${safeImg(recipe.image) ? `<img src="${esc(safeImg(recipe.image))}" class="recipe-detail-img" />` : ""}
+      <h3 style="margin:0 0 8px">${esc(recipe.name)}</h3>
+      ${recipe.description ? `<p style="color:var(--secondary-text-color);font-size:.88em;margin:0 0 10px">${esc(recipe.description)}</p>` : ""}
       <div class="recipe-detail-meta">
         ${total ? `<span>⏱ ${total} min</span>` : ""}
-        ${recipe.prep_time ? `<span>🔪 Bereiding: ${recipe.prep_time}m</span>` : ""}
-        ${recipe.cook_time ? `<span>🍳 Kooktijd: ${recipe.cook_time}m</span>` : ""}
-        <span>👤 ${recipe.servings || 4} personen</span>
-        <span class="badge ${diffBadge}">${(this._labels["diff_" + recipe.difficulty] || this._l("diff_medium")) || "Gemiddeld"}</span>
-        ${recipe.category ? `<span>📁 ${recipe.category}</span>` : ""}
+        ${recipe.prep_time ? `<span>🔪 Bereiding: ${esc(recipe.prep_time)}m</span>` : ""}
+        ${recipe.cook_time ? `<span>🍳 Kooktijd: ${esc(recipe.cook_time)}m</span>` : ""}
+        <span>👤 ${esc(recipe.servings || 4)} personen</span>
+        <span class="badge ${diffBadge}">${esc(this._labels["diff_" + recipe.difficulty] || this._l("diff_medium"))}</span>
+        ${recipe.category ? `<span>📁 ${esc(recipe.category)}</span>` : ""}
       </div>
-      ${recipe.tags?.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">${recipe.tags.map(t=>`<span class="recipe-tag">${t}</span>`).join("")}</div>` : ""}
-      ${recipe.source_url ? `<p style="font-size:.8em;margin-bottom:12px"><a href="${recipe.source_url}" target="_blank" rel="noopener">🔗 Origineel recept</a></p>` : ""}
+      ${recipe.tags?.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">${recipe.tags.map(t=>`<span class="recipe-tag">${esc(t)}</span>`).join("")}</div>` : ""}
+      ${safeUrl(recipe.source_url) ? `<p style="font-size:.8em;margin-bottom:12px"><a href="${esc(safeUrl(recipe.source_url))}" target="_blank" rel="noopener">🔗 Origineel recept</a></p>` : ""}
       ${recipe.ingredients?.length ? `
         <div class="recipe-detail-section">
           <h4>🧺 Ingrediënten</h4>
           ${recipe.ingredients.map(i => `
             <div class="ing-list-item">
-              <span>${i.name}</span>
-              <span style="color:var(--secondary-text-color)">${i.amount || ""} ${i.unit || ""}</span>
+              <span>${esc(i.name)}</span>
+              <span style="color:var(--secondary-text-color)">${esc(i.amount || "")} ${esc(i.unit)}</span>
             </div>`).join("")}
         </div>` : ""}
       ${recipe.steps?.length ? `
@@ -1673,7 +1802,7 @@ class MealPlannerCard extends HTMLElement {
           ${recipe.steps.map((s, i) => `
             <div class="step-detail">
               <div class="step-num">${i+1}</div>
-              <div>${s}</div>
+              <div>${esc(s)}</div>
             </div>`).join("")}
         </div>` : ""}
       ${recipe.last_cooked ? `<p style="font-size:.75em;color:var(--secondary-text-color);margin-top:8px">Laatste keer gekookt: ${new Date(recipe.last_cooked).toLocaleDateString("nl-NL")}</p>` : ""}

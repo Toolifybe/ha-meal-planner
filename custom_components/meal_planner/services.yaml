@@ -16,4 +16,6 @@ add_recipe:
 
 get_todays_dinner:
   name: Get Today's Dinner
-  description: Returns the planned dinner for today.
+  description: >-
+    Returns tonight's planned dinner (recipe, or a no-cook option such as
+    Restaurant) as a service response.
