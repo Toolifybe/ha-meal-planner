@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 import voluptuous as vol
 
@@ -197,8 +197,28 @@ def _ws_subscribe(hass, connection, msg):
     connection.send_result(msg["id"])
 
 
+CARD_URL = "/meal_planner/meal-planner-card.js"
+
+
+async def _register_card(hass: HomeAssistant):
+    """Serve the card and load it on every dashboard, with a version in the
+    URL so browsers fetch the new file after an update. No manual resource needed."""
+    from homeassistant.components.frontend import add_extra_js_url
+
+    path = os.path.join(os.path.dirname(__file__), "frontend", "meal-planner-card.js")
+    try:
+        from homeassistant.components.http import StaticPathConfig
+        await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, path, False)])
+    except ImportError:  # Home Assistant before 2024.7
+        hass.http.register_static_path(CARD_URL, path, False)
+    stamp = int(await hass.async_add_executor_job(os.path.getmtime, path))
+    add_extra_js_url(hass, f"{CARD_URL}?v={stamp}")
+
+
 async def async_setup(hass: HomeAssistant, config: dict):
+    # Old way (manual resource /local/community/...) keeps working for now
     await hass.async_add_executor_job(_copy_frontend, hass)
+    await _register_card(hass)
 
     store = Store(hass)
     hass.data[DOMAIN] = store
@@ -234,6 +254,31 @@ async def async_setup(hass: HomeAssistant, config: dict):
     return True
 
 
+def _last_eaten(all_planning, today):
+    """Last day (up to today) each recipe was planned as dinner.
+
+    "Last eaten" used to be set the moment you planned a recipe, also for
+    next week. Now it is derived from the planning itself.
+    """
+    last = {}
+    for week, plan in all_planning.items():
+        m = re.match(r"^(\d{4})-W(\d{2})$", str(week))
+        if not m or not isinstance(plan, dict):
+            continue
+        days = plan.get("days") or {}
+        for i, day in enumerate(DAYS):
+            rid = (days.get(day) or {}).get("dinner")
+            if not rid:
+                continue
+            try:
+                when = date.fromisocalendar(int(m.group(1)), int(m.group(2)), i + 1)
+            except ValueError:
+                continue
+            if when <= today and (rid not in last or when > last[rid]):
+                last[rid] = when
+    return last
+
+
 # ─── Recipes ──────────────────────────────────────────────────────────
 class RecipesView(HomeAssistantView):
     url = "/api/meal_planner/recipes"
@@ -243,9 +288,15 @@ class RecipesView(HomeAssistantView):
     async def get(self, request):
         store = _store(request)
         try:
-            return self.json(await store.load(store.recipes, []))
+            recipes = await store.load(store.recipes, [])
+            all_planning = await store.load(store.planning, {})
         except DataFileError as err:
             return _error_json(self, err)
+        last = _last_eaten(all_planning, dt_util.now().date())
+        for recipe in recipes:
+            when = last.get(recipe.get("id"))
+            recipe["last_cooked"] = when.isoformat() if when else None
+        return self.json(recipes)
 
     async def post(self, request):
         store = _store(request)

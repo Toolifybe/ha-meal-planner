@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-1.9.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -37,7 +37,7 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 ### Step 1: Add as custom repository
 
 1. Open **HACS** → **Integrations** → **⋮** → **Custom repositories**
-2. URL: `https://github.com/YOUR_GITHUB_USERNAME/ha-meal-planner`
+2. URL: `https://github.com/Toolifybe/ha-meal-planner`
 3. Category: **Integration**
 
 ### Step 2: Install & restart HA
@@ -48,17 +48,31 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 meal_planner:
 ```
 
-### Step 4: Add Lovelace resource
-
-**Settings → Dashboards → Resources:**
-- URL: `/local/community/ha-meal-planner/meal-planner-card.js`
-- Type: JavaScript module
-
-### Step 5: Add card
+### Step 4: Add card
 
 ```yaml
 type: custom:meal-planner-card
 ```
+
+The integration loads the card itself (since v2.0.0). You no longer need a
+Lovelace resource. If you added `/local/community/ha-meal-planner/meal-planner-card.js`
+by hand earlier, remove it under **Settings → Dashboards → ⋮ → Resources**, so the
+browser can't keep loading an old copy.
+
+### Card options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `title` | Maaltijdplanner | Title in the header |
+| `default_servings` | 4 | Persons filled in when you put a recipe on an empty day |
+| `dinner_category` | 3rd category (`avondeten`) | Category used by "Random" |
+| `readonly` | `false` | Only show the week planner, no editing |
+| `labels` | — | Translate or rename texts (see below) |
+
+All options except `labels` can also be set in the visual card editor.
+
+The card follows your Home Assistant theme (light and dark) and uses the
+theme's primary color.
 
 ---
 
@@ -176,14 +190,14 @@ labels:
   tab_planner: "Week Planner"
   tab_recipes: "Recipes"
   tab_shopping: "Shopping"
-  planner_tonight: "🌙 Tonight"
-  planner_empty: "+ Choose meal"
-  planner_note_empty: "+ add note"
-  planner_copy: "📋 Copy previous week"
-  planner_random: "🎲 Random"
+  planner_tonight: "Tonight"
+  planner_empty: "Choose meal"
+  planner_note_empty: "add note"
+  planner_copy: "Copy previous week"
+  planner_random: "Random"
   recipes_search: "Search recipes..."
-  recipes_add: "+ Recipe"
-  recipes_import: "📥 Import"
+  recipes_add: "Recipe"
+  recipes_import: "Import"
   recipes_all_cats: "All categories"
   recipe_modal_add: "Add recipe"
   recipe_modal_edit: "Edit recipe"
@@ -197,28 +211,28 @@ labels:
   recipe_difficulty: "Difficulty"
   recipe_source: "Source URL"
   recipe_rating: "Rating"
-  recipe_favourite: "❤️ Favourite"
+  recipe_favourite: "Favourite"
   recipe_tags: "Tags"
   recipe_tags_ph: "Add tag + Enter..."
   recipe_photo: "Photo"
-  recipe_photo_ph: "📸 Click or drag a photo"
+  recipe_photo_ph: "Click or drag a photo"
   recipe_ingredients: "Ingredients"
   recipe_ing_name: "Name"
   recipe_ing_unit: "Unit"
-  recipe_add_ing: "+ Ingredient"
+  recipe_add_ing: "Ingredient"
   recipe_steps: "Instructions"
-  recipe_add_step: "+ Step"
+  recipe_add_step: "Step"
   import_title: "Import recipe"
   import_intro: "Paste a link from any recipe website."
   import_fetch: "Fetch"
   shop_subtab_week: "Week list"
   shop_subtab_fixed: "Fixed products"
-  shop_generate: "🛒 Generate shopping list"
-  shop_extra_add: "+ Extra item"
-  shop_fixed_add: "+ Fixed product"
+  shop_generate: "Generate shopping list"
+  shop_extra_add: "Extra item"
+  shop_fixed_add: "Fixed product"
   shop_fixed_to_week: "Add to week list"
   pick_title: "Choose a meal"
-  pick_search: "🔍 Search..."
+  pick_search: "Search..."
   btn_save: "Save"
   btn_cancel: "Cancel"
   btn_delete: "Delete"
@@ -250,14 +264,16 @@ labels:
 | `tab_planner` | Weekplanner |
 | `tab_recipes` | Recepten |
 | `tab_shopping` | Boodschappen |
-| `planner_tonight` | 🌙 Vanavond |
+| `title` | Maaltijdplanner |
+| `planner_tonight` | Vanavond |
+| `tonight_empty` | Nog niets gepland voor vanavond |
 | `planner_empty` | + Kies maaltijd |
-| `planner_note_empty` | ＋ notitie toevoegen |
-| `planner_copy` | 📋 Vorige week kopiëren |
-| `planner_random` | 🎲 Willekeurig |
+| `planner_note_empty` | Notitie toevoegen |
+| `planner_copy` | Vorige week kopiëren |
+| `planner_random` | Willekeurig |
 | `recipes_search` | Zoek recept... |
-| `recipes_add` | + Recept |
-| `recipes_import` | 📥 Importeren |
+| `recipes_add` | Recept |
+| `recipes_import` | Importeren |
 | `recipes_all_cats` | Alle categorieën |
 | `recipe_modal_add` | Recept toevoegen |
 | `recipe_modal_edit` | Recept bewerken |
@@ -271,31 +287,35 @@ labels:
 | `recipe_difficulty` | Moeilijkheid |
 | `recipe_source` | Bron URL |
 | `recipe_rating` | Beoordeling |
-| `recipe_favourite` | ❤️ Favoriet |
+| `recipe_favourite` | Favoriet |
 | `recipe_tags` | Tags |
 | `recipe_tags_ph` | Tag toevoegen + Enter... |
 | `recipe_photo` | Foto |
-| `recipe_photo_ph` | 📸 Klik of sleep een foto |
+| `recipe_photo_ph` | Klik of sleep een foto |
 | `recipe_ingredients` | Ingrediënten |
 | `recipe_ing_name` | Naam |
 | `recipe_ing_unit` | Eenheid |
-| `recipe_add_ing` | + Ingrediënt |
+| `recipe_add_ing` | Ingrediënt |
 | `recipe_steps` | Bereiding |
-| `recipe_add_step` | + Stap |
+| `recipe_add_step` | Stap |
 | `import_title` | Recept importeren |
 | `import_intro` | Plak een link van... |
 | `import_fetch` | Ophalen |
 | `shop_subtab_week` | Weeklijst |
 | `shop_subtab_fixed` | Vaste producten |
-| `shop_generate` | 🛒 Genereer boodschappenlijst |
-| `shop_extra_add` | + Extra item |
-| `shop_fixed_add` | + Vast product |
+| `shop_generate` | Lijst maken |
+| `shop_extra_add` | Extra item |
+| `shop_fixed_add` | Vast product |
 | `shop_fixed_to_week` | Toevoegen aan weeklijst |
 | `pick_title` | Maaltijd kiezen |
-| `pick_search` | 🔍 Zoeken... |
+| `pick_search` | Zoeken... |
 | `btn_save` | Opslaan |
 | `btn_cancel` | Annuleren |
 | `btn_delete` | Verwijderen |
+| `btn_edit` | Bewerken |
+| `btn_close` | Sluiten |
+| `week` | Week |
+| `last_cooked` | Laatst gegeten |
 | `diff_easy` | Makkelijk |
 | `diff_medium` | Gemiddeld |
 | `diff_hard` | Moeilijk |
@@ -307,6 +327,18 @@ labels:
 ---
 
 ## 📋 Changelog
+
+### v2.0.0
+- 🎨 New look in Home Assistant style: follows your theme (light **and dark**), header with "Tonight", segmented tabs, Material Design icons instead of emoji, flat rows like the Home Energy Flow Card
+- 📅 Week planner: compact day column, today highlighted, notes inside the day row
+- 🛒 Shopping list: progress "x of y", categories in shop order, tap the whole row to tick off
+- 🖼️ Photos are shrunk to max 1024 px when uploading (and old large photos when you save the recipe); drag & drop a photo
+- 🍽️ "Last eaten" now comes from the planning (only days that have passed), no longer set when you plan
+- 🎲 "Random" uses the dinner category from your labels (or `dinner_category`), not a hard-coded "avondeten"
+- ⚙️ Visual editor: title, default persons (now really used), random category, readonly
+- 🔌 The integration loads the card itself, with a version in the URL: no manual resource and no old cached file after an update. Remove an old manual resource if you had one.
+- 🧹 Correct links in manifest and `hacs.json`, version numbers aligned
+- 🐛 Recipe detail can be closed in readonly mode; clicking next to a dialog closes it; confirm before deleting a fixed product
 
 ### v1.9.1
 - 🛡️ Data files are written safely with a `.bak` backup; a damaged file is never treated as empty anymore (could wipe all recipes)
