@@ -1,9 +1,9 @@
 /**
  * Meal Planner Card for Home Assistant
- * v2.0.0
+ * v2.0.1
  */
 
-const MP_VERSION = "2.0.0";
+const MP_VERSION = "2.0.1";
 
 
 const DEFAULT_LABELS = {

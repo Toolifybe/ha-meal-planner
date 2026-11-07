@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -54,10 +54,12 @@ meal_planner:
 type: custom:meal-planner-card
 ```
 
-The integration loads the card itself (since v2.0.0). You no longer need a
-Lovelace resource. If you added `/local/community/ha-meal-planner/meal-planner-card.js`
-by hand earlier, remove it under **Settings → Dashboards → ⋮ → Resources**, so the
-browser can't keep loading an old copy.
+The integration adds the card as a dashboard resource itself (since v2.0.1):
+`/meal_planner/meal-planner-card.js?v=…`. The version in the link changes with every
+update, so the browser always gets the new file. If you added
+`/local/community/ha-meal-planner/meal-planner-card.js` by hand earlier, remove it under
+**Settings → Dashboards → ⋮ → Resources**. Dashboards in YAML mode: add
+`/meal_planner/meal-planner-card.js` as a JavaScript module yourself.
 
 ### Card options
 
@@ -327,6 +329,9 @@ labels:
 ---
 
 ## 📋 Changelog
+
+### v2.0.1
+- 🐛 The card was fetched but not started on recent Home Assistant versions (e.g. in Firefox): "Custom element doesn't exist". The integration now adds it as a normal dashboard resource (with version in the link) instead.
 
 ### v2.0.0
 - 🎨 New look in Home Assistant style: follows your theme (light **and dark**), header with "Tonight", segmented tabs, Material Design icons instead of emoji, flat rows like the Home Energy Flow Card

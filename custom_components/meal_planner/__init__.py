@@ -201,9 +201,13 @@ CARD_URL = "/meal_planner/meal-planner-card.js"
 
 
 async def _register_card(hass: HomeAssistant):
-    """Serve the card and load it on every dashboard, with a version in the
-    URL so browsers fetch the new file after an update. No manual resource needed."""
-    from homeassistant.components.frontend import add_extra_js_url
+    """Serve the card and add it as a dashboard resource, with a version in
+    the URL so browsers fetch the new file after an update.
+
+    (frontend.add_extra_js_url was tried in v2.0.0: recent frontends fetch
+    such modules but did not run them reliably, e.g. in Firefox.)
+    """
+    from homeassistant.helpers.start import async_at_started
 
     path = os.path.join(os.path.dirname(__file__), "frontend", "meal-planner-card.js")
     try:
@@ -212,7 +216,40 @@ async def _register_card(hass: HomeAssistant):
     except ImportError:  # Home Assistant before 2024.7
         hass.http.register_static_path(CARD_URL, path, False)
     stamp = int(await hass.async_add_executor_job(os.path.getmtime, path))
-    add_extra_js_url(hass, f"{CARD_URL}?v={stamp}")
+    url = f"{CARD_URL}?v={stamp}"
+
+    async def add_resource(_hass):
+        try:
+            await _ensure_resource(hass, url)
+        except Exception as err:  # never block the integration for this
+            _LOGGER.warning("Meal Planner: could not add the dashboard resource (%s). "
+                            "Add %s as a JavaScript module under Dashboards → Resources.", err, CARD_URL)
+
+    async_at_started(hass, add_resource)
+
+
+async def _ensure_resource(hass: HomeAssistant, url: str):
+    """Create or update the Lovelace resource for the card (storage mode)."""
+    lovelace = hass.data.get("lovelace")
+    resources = getattr(lovelace, "resources", None)
+    if resources is None and isinstance(lovelace, dict):
+        resources = lovelace.get("resources")
+    if resources is None or not hasattr(resources, "async_create_item"):
+        _LOGGER.info("Meal Planner: dashboards in YAML mode; add %s as a resource yourself", CARD_URL)
+        return
+    if not getattr(resources, "loaded", True):
+        await resources.async_load()
+        resources.loaded = True
+
+    for item in resources.async_items():
+        current = str(item.get("url", ""))
+        if current.split("?")[0] == CARD_URL:
+            if current != url:
+                await resources.async_update_item(item["id"], {"res_type": "module", "url": url})
+                _LOGGER.info("Meal Planner: resource updated to %s", url)
+            return
+    await resources.async_create_item({"res_type": "module", "url": url})
+    _LOGGER.info("Meal Planner: resource %s added", url)
 
 
 async def async_setup(hass: HomeAssistant, config: dict):

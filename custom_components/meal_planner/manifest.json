@@ -1,7 +1,7 @@
 {
   "domain": "meal_planner",
   "name": "Meal Planner",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "documentation": "https://github.com/Toolifybe/ha-meal-planner",
   "issue_tracker": "https://github.com/Toolifybe/ha-meal-planner/issues",
   "codeowners": [
@@ -10,7 +10,8 @@
   "dependencies": [
     "http",
     "frontend",
-    "websocket_api"
+    "websocket_api",
+    "lovelace"
   ],
   "requirements": [],
   "config_flow": false,
