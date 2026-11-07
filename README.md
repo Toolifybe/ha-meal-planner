@@ -10,6 +10,7 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 ## ✨ Features
 
 - 📅 **Weekly dinner planner** — one meal per day, clean layout with today highlighted
+- ⚡ **Quick add** — type a meal that doesn't exist yet in the picker and plan it right away
 - 📝 **Day notes** — add a note per day (e.g. "guests", "takeaway")
 - 📖 **Recipe library** — with photo, ingredients, steps, tags & difficulty
 - ⭐ **Star ratings** — rate recipes from 1 to 5 stars
@@ -18,9 +19,9 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 - 📥 **Import via URL** — scrape recipes from any site with JSON-LD (e.g. Dagelijkse Kost, Njam)
 - 🛒 **Auto shopping list** — generated from the week's recipes, grouped by shop category
 - 📌 **Fixed products** — always-needed items you can add to any week's list
-- 🌙 **Tonight's dinner widget** — always visible on the planner tab
-- 🎲 **Random dinner** button — auto-fills the week with random recipes
-- 📋 **Copy previous week** — reuse last week's plan
+- 🌙 **Tonight in the header** — tonight's dinner (or no-cook night) always visible
+- 🎲 **Random dinner** button — fills the empty days with random recipes, no duplicates
+- 📋 **Copy previous week** — reuse last week's plan (asks before overwriting)
 - 👤 **Servings per day** — scales ingredient amounts automatically
 - ✅ **Shopping checklist** with progress bar
 - ➕ **Extra items** with amount, unit and shop category
@@ -28,7 +29,11 @@ Plan your weekly dinners, manage recipes, and auto-generate a shopping list — 
 - 🔒 **Readonly mode** — show only the week planner, nothing editable (configurable per dashboard/user)
 - 🌍 **Fully translatable** — all labels configurable via YAML
 - 🗑️ **Remove generated shopping items** — delete items you already have at home
-- 🎨 **Blue UI theme** — consistent blue color palette throughout
+- 🔄 **Live on every device** — planning, shopping list and ticks update instantly, also for non-admin users
+- 🍽️ **Last eaten** — per recipe, based on the days that have passed
+- 🎨 **Home Assistant look** — follows your theme (light and dark) and primary color, Material Design icons
+- ⚙️ **Visual editor** — title, default persons, random category, readonly
+- 🛡️ **Safe storage** — atomic writes with a `.bak` backup
 
 ---
 
@@ -102,6 +107,7 @@ Combine with HA's per-user dashboards (**Settings → Dashboards**) to give diff
 
 ```
 ha-meal-planner/
+├── .github/workflows/release.yml   ← GitHub release per tag (HACS updates)
 ├── hacs.json
 ├── README.md
 ├── LICENSE
