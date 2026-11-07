@@ -1,9 +1,9 @@
 /**
  * Meal Planner Card for Home Assistant
- * v2.0.1
+ * v2.1.0
  */
 
-const MP_VERSION = "2.0.1";
+const MP_VERSION = "2.1.0";
 
 
 const DEFAULT_LABELS = {
@@ -96,7 +96,9 @@ const DEFAULT_LABELS = {
 
   // Pick modal
   pick_title:         "Maaltijd kiezen",
-  pick_search:        "Zoeken...",
+  pick_search:        "Zoek of typ een nieuw gerecht...",
+  pick_new:           "\"{name}\" inplannen",
+  pick_new_sub:       "Nieuw gerecht · vul het later aan bij Recepten",
 
   // No-cook options
   nocook_title:       "Geen kookavond",
@@ -449,6 +451,10 @@ const STYLES = `
   .pick-thumb { width:44px; height:44px; border-radius:8px; background:var(--mp-tile2); display:grid; place-items:center; color:var(--mp-sub); flex:none; overflow:hidden; }
   .pick-thumb img { width:100%; height:100%; object-fit:cover; }
   .pick-name { font-weight:600; font-size:14px; }
+  .pick-new { background:var(--mp-accbg); margin-bottom:4px; }
+  .pick-new:hover { background:color-mix(in srgb, var(--mp-acc) 20%, transparent); }
+  .pick-new .pick-thumb { background:var(--mp-acc); color:var(--text-primary-color, #fff); }
+  .pick-new .pick-name { color:var(--mp-acc); }
   .pick-meta { font-size:12px; color:var(--mp-sub); }
 
   /* Recipe detail modal */
@@ -1192,7 +1198,17 @@ class MealPlannerCard extends HTMLElement {
 
     // Pick modal
     r.getElementById("pick-cancel").addEventListener("click", () => r.getElementById("pick-modal").classList.remove("open"));
-    r.getElementById("pick-search").addEventListener("input", e => this._renderPickList(e.target.value.toLowerCase()));
+    r.getElementById("pick-search").addEventListener("input", e => this._renderPickList(e.target.value));
+    r.getElementById("pick-search").addEventListener("keydown", e => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      // Enter: an exact match is planned, otherwise a new meal is made
+      const text = e.target.value.trim();
+      if (!text) return;
+      const exact = this._recipes.find(rc => String(rc.name || "").trim().toLowerCase() === text.toLowerCase());
+      if (exact) this._planRecipe(exact);
+      else this._planNewMeal(text);
+    });
     r.querySelectorAll(".nocook-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const { day, mealType } = this._pickContext;
@@ -1840,10 +1856,49 @@ class MealPlannerCard extends HTMLElement {
     r.getElementById("pick-search").value = "";
     this._renderPickList("");
     r.getElementById("pick-modal").classList.add("open");
+    if (window.matchMedia?.("(hover: hover)").matches) setTimeout(() => r.getElementById("pick-search").focus(), 50);
   }
 
-  _renderPickList(query = "") {
+  // Put a recipe on the day that is being picked
+  _planRecipe(recipe) {
+    const { day, mealType } = this._pickContext;
+    const plan = JSON.parse(JSON.stringify(this._getPlanning(this._currentWeek)));
+    plan.days[day] = plan.days[day] || { dinner: null, servings: this._defaultServings() };
+    // a day that was empty starts from the card's default number of persons
+    if (!plan.days[day][mealType] && this._config?.default_servings) plan.days[day].servings = this._defaultServings();
+    plan.days[day][mealType] = recipe.id;
+    plan.days[day].nocook = null;
+    // "last eaten" is not set here: the backend derives it from the planning
+    this._savePlanning(this._currentWeek, plan).then(() => this._fetchRecipes());
+    this.shadowRoot.getElementById("pick-modal").classList.remove("open");
+  }
+
+  // Typed a meal that doesn't exist yet: make a minimal recipe and plan it
+  async _planNewMeal(name) {
+    if (this._creatingMeal) return;
+    this._creatingMeal = true;
+    try {
+      const recipe = await this._hass.callApi("POST", "meal_planner/recipes", {
+        name,
+        category: this._dinnerCategory(),
+        prep_time: 0,
+        cook_time: 0,
+        servings: this._defaultServings(),
+      });
+      this._recipes = [...this._recipes, recipe];
+      this._renderRecipes();
+      this._planRecipe(recipe);
+    } catch (e) {
+      this._showError(this._l("error_save"), e);
+    } finally {
+      this._creatingMeal = false;
+    }
+  }
+
+  _renderPickList(raw = "") {
     const list = this.shadowRoot.getElementById("pick-list");
+    const typed = String(raw).trim();
+    const query = typed.toLowerCase();
     let recipes = [...this._recipes].sort((a, b) =>
       (b.favourite ? 1 : 0) - (a.favourite ? 1 : 0) || String(a.name || "").localeCompare(String(b.name || ""), "nl"));
     if (query) recipes = recipes.filter(r =>
@@ -1851,11 +1906,25 @@ class MealPlannerCard extends HTMLElement {
       r.category?.toLowerCase().includes(query) ||
       r.tags?.some(t => t.includes(query))
     );
-    if (!recipes.length) {
+    list.innerHTML = "";
+    // Typed something that isn't an existing recipe: offer it as a new meal
+    const exists = this._recipes.some(rc => String(rc.name || "").trim().toLowerCase() === query);
+    if (typed && !exists) {
+      const add = document.createElement("div");
+      add.className = "pick-item pick-new";
+      add.innerHTML = `
+        <div class="pick-thumb">${ic("plus")}</div>
+        <div>
+          <div class="pick-name">${esc(this._l("pick_new").replace("{name}", typed))}</div>
+          <div class="pick-meta">${esc(this._l("pick_new_sub"))}</div>
+        </div>`;
+      add.addEventListener("click", () => this._planNewMeal(typed));
+      list.appendChild(add);
+    }
+    if (!recipes.length && !typed) {
       list.innerHTML = `<div class="empty-state"><div class="icon">${ic("magnify")}</div><p>${esc(this._l("recipes_empty"))}</p></div>`;
       return;
     }
-    list.innerHTML = "";
     recipes.forEach(recipe => {
       const item = document.createElement("div");
       item.className = "pick-item";
@@ -1867,19 +1936,7 @@ class MealPlannerCard extends HTMLElement {
           <div class="pick-name">${esc(recipe.name)}</div>
           <div class="pick-meta">${[recipe.category, total ? `${total} min` : "", `${recipe.servings || 4} pers.`].filter(Boolean).map(esc).join(" · ")}</div>
         </div>`;
-      item.addEventListener("click", () => {
-        const { day, mealType } = this._pickContext;
-        const plan = JSON.parse(JSON.stringify(this._getPlanning(this._currentWeek)));
-        plan.days[day] = plan.days[day] || { dinner: null, servings: this._defaultServings() };
-        // a day that was empty starts from the card's default number of persons
-        if (!plan.days[day][mealType] && this._config?.default_servings) plan.days[day].servings = this._defaultServings();
-        plan.days[day][mealType] = recipe.id;
-        plan.days[day].nocook = null;
-        // "last eaten" is no longer set here: the backend derives it from
-        // the planning (only days that have passed count)
-        this._savePlanning(this._currentWeek, plan).then(() => this._fetchRecipes());
-        this.shadowRoot.getElementById("pick-modal").classList.remove("open");
-      });
+      item.addEventListener("click", () => this._planRecipe(recipe));
       list.appendChild(item);
     });
   }

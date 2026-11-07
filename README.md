@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -310,7 +310,9 @@ labels:
 | `shop_fixed_add` | Vast product |
 | `shop_fixed_to_week` | Toevoegen aan weeklijst |
 | `pick_title` | Maaltijd kiezen |
-| `pick_search` | Zoeken... |
+| `pick_search` | Zoek of typ een nieuw gerecht... |
+| `pick_new` | "{name}" inplannen |
+| `pick_new_sub` | Nieuw gerecht · vul het later aan bij Recepten |
 | `btn_save` | Opslaan |
 | `btn_cancel` | Annuleren |
 | `btn_delete` | Verwijderen |
@@ -329,6 +331,10 @@ labels:
 ---
 
 ## 📋 Changelog
+
+### v2.1.0
+- ⚡ Quick add: type a meal in "Choose a meal" that doesn't exist yet and plan it right away ("Spaghetti" inplannen, or press Enter). A minimal recipe is created that you can complete later under Recipes.
+- Labels `pick_new` and `pick_new_sub`
 
 ### v2.0.1
 - 🐛 The card was fetched but not started on recent Home Assistant versions (e.g. in Firefox): "Custom element doesn't exist". The integration now adds it as a normal dashboard resource (with version in the link) instead.
