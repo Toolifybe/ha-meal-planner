@@ -1,7 +1,7 @@
 # 🍽️ Meal Planner for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.1.1-blue.svg)
 
 Plan your weekly dinners, manage recipes, and auto-generate a shopping list — all from your HA dashboard.
 
@@ -117,6 +117,7 @@ ha-meal-planner/
         ├── manifest.json
         ├── services.yaml
         ├── strings.json
+        ├── brand/            # icon (light and dark), Home Assistant 2026.3+
         └── frontend/
             └── meal-planner-card.js
 ```
@@ -337,6 +338,9 @@ labels:
 ---
 
 ## 📋 Changelog
+
+### v2.1.1
+- 🖼️ Own icon (light and dark) in `brand/`, shown in Settings → Devices & services from Home Assistant 2026.3.
 
 ### v2.1.0
 - ⚡ Quick add: type a meal in "Choose a meal" that doesn't exist yet and plan it right away ("Spaghetti" inplannen, or press Enter). A minimal recipe is created that you can complete later under Recipes.
